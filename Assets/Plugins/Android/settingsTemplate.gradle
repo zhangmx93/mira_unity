@@ -1,0 +1,45 @@
+pluginManagement {
+    repositories {**ARTIFACTORYREPOSITORY**
+        // 阿里云公共仓库
+        maven {
+            url 'https://maven.aliyun.com/repository/public'
+        }
+        // 阿里云私有仓库(需要认证)
+        maven {
+            credentials {
+                username '6900368e19f260d93eb744eb'
+                password 'IbPE57X=Vixi'
+            }
+            url 'https://packages.aliyun.com/67e2adc9b8d84778e0e7cf59/maven/2527743-release-4ztgk6'
+        }
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+    }
+}
+
+include ':launcher', ':unityLibrary'
+**INCLUDES**
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {**ARTIFACTORYREPOSITORY**
+        // 阿里云公共仓库
+        maven {
+            url 'https://maven.aliyun.com/repository/public'
+        }
+        // 阿里云私有仓库(需要认证)
+        maven {
+            credentials {
+                username '6900368e19f260d93eb744eb'
+                password 'IbPE57X=Vixi'
+            }
+            url 'https://packages.aliyun.com/67e2adc9b8d84778e0e7cf59/maven/2527743-release-4ztgk6'
+        }
+        google()
+        mavenCentral()
+        flatDir {
+            dirs "${project(':unityLibrary').projectDir}/libs"
+        }
+    }
+}
