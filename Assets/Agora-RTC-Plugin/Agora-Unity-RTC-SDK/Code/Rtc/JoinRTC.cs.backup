@@ -1,0 +1,666 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using Agora.Rtc;
+#if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
+    using UnityEngine.Android;
+#endif
+
+public class JoinRTC : MonoBehaviour
+{
+    // 填入你的 App ID
+    private string _appID = "0790dea83cfc4c9884149c488f673912";
+    // 填入你的频道名
+    private string _channelName = "123456";
+    // 填入 Token
+    private string _token = "007eJxTYHi7v/iTo/bZu7f3Le13npuUPuHQkwtLDNrVF1v/fbfrydZABQYDc0uDlNREC+PktGSTZEsLCxNDE8tkEwuLNDNzY0tDozMPrmQ0BDIyHFufysjIAIEgPhuDoZGxiakZAwMA8KsjxQ==";
+#if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
+    private ArrayList permissionList = new ArrayList() { Permission.Camera, Permission.Microphone };
+#endif
+
+    public Text LogText;
+    internal Logger Log;
+    internal IRtcEngine RtcEngine = null;
+
+    // 日志缓存，用于在UI上显示
+    private System.Text.StringBuilder logBuilder = new System.Text.StringBuilder();
+    private int maxLogLines = 50; // 最多显示50行日志
+
+    void Start()
+    {
+        CheckPermissions();
+
+        // 初始化日志系统
+        InitializeLogger();
+
+        LogMessage("=== JoinRTC Start() 开始 ===");
+
+        // 1. 创建 RtcEngine 实例
+        Debug.Log("1. 正在创建 RtcEngine 实例...");
+        RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
+
+        if (RtcEngine == null)
+        {
+            Debug.LogError("❌ 创建 RtcEngine 实例失败");
+            return;
+        }
+        Debug.Log("✅ RtcEngine 实例创建成功");
+
+        // 2. 检查 AppID
+        Debug.Log("2. 正在检查 AppID...");
+        CheckAppId();
+
+        // 3. 设置视频 SDK 引擎
+        Debug.Log("3. 正在设置视频 SDK 引擎...");
+        SetupVideoSDKEngine();
+
+        // 4. 确保运行时 UI 存在并可交互
+        Debug.Log("4. 正在确保运行时 UI...");
+        EnsureRuntimeUI();
+        SetupUI();
+
+        // 5. 初始化事件处理器
+        Debug.Log("5. 正在初始化事件处理器...");
+        InitEventHandler();
+
+        Debug.Log("=== JoinRTC Start() 完成 ===");
+    }
+
+    // 创建实例并初始化
+    private void SetupVideoSDKEngine()
+    {
+        Debug.Log("📱 开始设置视频 SDK 引擎...");
+
+        try
+        {
+            // 创建 RtcEngineContext
+            RtcEngineContext context = new RtcEngineContext();
+            Debug.Log("✅ RtcEngineContext 创建成功");
+
+            // 设置配置参数
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+
+            Debug.Log($"📋 配置参数设置完成:");
+            Debug.Log($"   - AppID: {_appID}");
+            Debug.Log($"   - ChannelProfile: {context.channelProfile}");
+            Debug.Log($"   - AudioScenario: {context.audioScenario}");
+
+            // 初始化 IRtcEngine
+            Debug.Log("🔄 正在初始化 RtcEngine...");
+            int result = RtcEngine.Initialize(context);
+
+            if (result == 0)
+            {
+                Debug.Log("✅ RtcEngine 初始化成功");
+            }
+            else
+            {
+                Debug.LogError($"❌ RtcEngine 初始化失败，错误代码: {result}");
+                // 根据错误代码提供详细信息
+                switch (result)
+                {
+                    case -1:
+                        Debug.LogError("一般性错误，请检查网络连接");
+                        break;
+                    case -2:
+                        Debug.LogError("参数无效，请检查 AppID 和配置");
+                        break;
+                    case -7:
+                        Debug.LogError("引擎未初始化");
+                        break;
+                    case -101:
+                        Debug.LogError("AppID 无效");
+                        break;
+                    default:
+                        Debug.LogError($"未知错误代码: {result}");
+                        break;
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"❌ 设置视频 SDK 引擎时出现异常: {ex.Message}");
+            Debug.LogError($"堆栈跟踪: {ex.StackTrace}");
+        }
+    }
+
+    private bool CheckAppId()
+    {
+        Debug.Log("🔍 检查 AppID 有效性...");
+
+        bool isValid = !string.IsNullOrEmpty(_appID) && _appID.Length > 10;
+
+        if (!isValid)
+        {
+            Debug.LogWarning($"⚠️ AppID 可能无效，当前值: {_appID}");
+            Debug.LogWarning("请检查 AppID 配置，长度应大于10个字符");
+        }
+        else
+        {
+            Debug.Log($"✅ AppID 检查通过: {_appID}");
+        }
+
+        return isValid;
+    }
+
+    private void SetupUI()
+    {
+        Debug.Log("🎨 设置 UI 组件...");
+
+        try
+        {
+            // 查找离开按钮
+            GameObject leaveGo = GameObject.Find("Canvas/Leave");
+            if (leaveGo != null)
+            {
+                Button leaveButton = leaveGo.GetComponent<Button>();
+                if (leaveButton != null)
+                {
+                    leaveButton.onClick.AddListener(Leave);
+                    Debug.Log("✅ 离开按钮设置成功");
+                }
+                else
+                {
+                    Debug.LogWarning("⚠️ 未找到离开按钮的 Button 组件");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ 未找到 Canvas/Leave 游戏对象");
+            }
+
+            // 查找加入按钮
+            GameObject joinGo = GameObject.Find("Canvas/Join");
+            if (joinGo != null)
+            {
+                Button joinButton = joinGo.GetComponent<Button>();
+                if (joinButton != null)
+                {
+                    joinButton.onClick.AddListener(Join);
+                    Debug.Log("✅ 加入按钮设置成功");
+                }
+                else
+                {
+                    Debug.LogWarning("⚠️ 未找到加入按钮的 Button 组件");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ 未找到 Canvas/Join 游戏对象");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"❌ 设置 UI 时出现异常: {ex.Message}");
+        }
+    }
+
+    // 确保运行时具备可点击 UI（Canvas、GraphicRaycaster、EventSystem、Join/Leave 按钮）
+    private void EnsureRuntimeUI()
+    {
+        EnsureEventSystemExists();
+
+        GameObject canvasGo = GameObject.Find("Canvas");
+        if (canvasGo == null)
+        {
+            canvasGo = new GameObject("Canvas");
+            canvasGo.layer = LayerMask.NameToLayer("UI");
+
+            var rectTransform = canvasGo.AddComponent<RectTransform>();
+            rectTransform.anchorMin = Vector2.zero;
+            rectTransform.anchorMax = Vector2.one;
+            rectTransform.offsetMin = Vector2.zero;
+            rectTransform.offsetMax = Vector2.zero;
+
+            var canvas = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+            if (canvasGo.GetComponent<UnityEngine.UI.CanvasScaler>() == null)
+            {
+                var scaler = canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>();
+                scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1080, 1920);
+                scaler.matchWidthOrHeight = 1f;
+            }
+
+            if (canvasGo.GetComponent<UnityEngine.UI.GraphicRaycaster>() == null)
+            {
+                canvasGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+            }
+        }
+
+        // 如果没有按钮则创建
+        if (GameObject.Find("Canvas/Join") == null)
+        {
+            CreateButton(canvasGo.transform, "Join", new Vector2(0.5f, 0.2f), Join);
+        }
+        if (GameObject.Find("Canvas/Leave") == null)
+        {
+            CreateButton(canvasGo.transform, "Leave", new Vector2(0.5f, 0.1f), Leave);
+        }
+    }
+
+    private void EnsureEventSystemExists()
+    {
+        if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() != null)
+        {
+            return;
+        }
+
+        var es = new GameObject("EventSystem");
+        es.AddComponent<UnityEngine.EventSystems.EventSystem>();
+        es.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+    }
+
+    private void CreateButton(Transform parent, string buttonName, Vector2 anchor, UnityEngine.Events.UnityAction onClick)
+    {
+        var go = new GameObject(buttonName);
+        go.transform.SetParent(parent, false);
+        go.layer = LayerMask.NameToLayer("UI");
+
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = anchor;
+        rt.anchorMax = anchor;
+        rt.sizeDelta = new Vector2(280, 90);
+        rt.anchoredPosition = Vector2.zero;
+
+        var img = go.AddComponent<Image>();
+        img.color = new Color(0.15f, 0.6f, 1f, 0.9f);
+
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        btn.onClick.AddListener(onClick);
+
+        // 文本
+        var textGo = new GameObject("Text");
+        textGo.transform.SetParent(go.transform, false);
+        var text = textGo.AddComponent<Text>();
+        text.text = buttonName;
+        text.alignment = TextAnchor.MiddleCenter;
+        text.color = Color.white;
+        text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        var trt = text.GetComponent<RectTransform>();
+        trt.anchorMin = Vector2.zero;
+        trt.anchorMax = Vector2.one;
+        trt.offsetMin = Vector2.zero;
+        trt.offsetMax = Vector2.zero;
+    }
+
+    public void Join()
+    {
+        Debug.Log($"🎯 开始加入频道: {_channelName}");
+
+        if (RtcEngine == null)
+        {
+            Debug.LogError("❌ RtcEngine 未初始化，无法加入频道");
+            return;
+        }
+
+        try
+        {
+            // 启用音频模块
+            Debug.Log("🔊 启用音频模块...");
+            RtcEngine.EnableAudio();
+            Debug.Log("✅ 音频模块启用成功");
+
+            // 设置频道媒体选项
+            Debug.Log("⚙️ 设置频道媒体选项...");
+            ChannelMediaOptions options = new ChannelMediaOptions();
+
+            // 发布麦克风采集的音频流
+            options.publishMicrophoneTrack.SetValue(true);
+            // 自动订阅所有音频流
+            options.autoSubscribeAudio.SetValue(true);
+            // 将频道场景设为直播
+            options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
+            // 将用户角色设为主播
+            options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+
+            Debug.Log("✅ 频道媒体选项设置完成:");
+
+            // 加入频道
+            Debug.Log($"🚪 正在加入频道: {_channelName}");
+            int result = RtcEngine.JoinChannel(_token, _channelName, 0, options);
+
+            if (result == 0)
+            {
+                Debug.Log($"✅ 加入频道请求发送成功: {_channelName}");
+            }
+            else
+            {
+                Debug.LogError($"❌ 加入频道失败，错误代码: {result}");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"❌ 加入频道时出现异常: {ex.Message}");
+        }
+    }
+
+    // 创建用户回调类实例，并设置回调
+    private void InitEventHandler()
+    {
+        Debug.Log("🔄 初始化事件处理器...");
+
+        try
+        {
+            UserEventHandler handler = new UserEventHandler(this);
+            RtcEngine.InitEventHandler(handler);
+            Debug.Log("✅ 事件处理器初始化成功");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"❌ 初始化事件处理器时出现异常: {ex.Message}");
+        }
+    }
+
+    // 实现你自己的回调类，可以继承 IRtcEngineEventHandler 接口类实现
+    internal class UserEventHandler : IRtcEngineEventHandler
+    {
+        private readonly JoinRTC _joinRTC;
+
+        internal UserEventHandler(JoinRTC joinRTC)
+        {
+            _joinRTC = joinRTC;
+            Debug.Log("✅ UserEventHandler 创建成功");
+        }
+
+        // 本地用户成功加入频道时，会触发该回调
+        public override void OnJoinChannelSuccess(RtcConnection connection, int elapsed)
+        {
+            Debug.Log($"🎉 本地用户成功加入频道!");
+            Debug.Log($"   - 频道名: {connection.channelId}");
+            Debug.Log($"   - 用户ID: {connection.localUid}");
+            Debug.Log($"   - 耗时: {elapsed}ms");
+        }
+
+        // 远端用户成功加入频道时，会触发该回调
+        public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed)
+        {
+            Debug.Log($"👤 远端用户加入频道:");
+            Debug.Log($"   - 用户ID: {uid}");
+            Debug.Log($"   - 频道名: {connection.channelId}");
+            Debug.Log($"   - 耗时: {elapsed}ms");
+        }
+
+        // 远端用户离开当前频道时，会触发该回调
+        public override void OnUserOffline(RtcConnection connection, uint uid, USER_OFFLINE_REASON_TYPE reason)
+        {
+            Debug.Log($"👋 远端用户离开频道:");
+            Debug.Log($"   - 用户ID: {uid}");
+            Debug.Log($"   - 原因: {reason}");
+        }
+
+    }
+
+    public void Leave()
+    {
+        Debug.Log($"🚪 开始离开频道: {_channelName}");
+
+        if (RtcEngine == null)
+        {
+            Debug.LogError("❌ RtcEngine 未初始化，无法离开频道");
+            return;
+        }
+
+        try
+        {
+            // 离开频道
+            int result = RtcEngine.LeaveChannel();
+            if (result == 0)
+            {
+                Debug.Log("✅ 离开频道请求发送成功");
+            }
+            else
+            {
+                Debug.LogError($"❌ 离开频道失败，错误代码: {result}");
+            }
+
+            // 关闭音频模块
+            RtcEngine.DisableAudio();
+            Debug.Log("🔇 音频模块已关闭");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"❌ 离开频道时出现异常: {ex.Message}");
+        }
+    }
+
+    void OnDestroy()
+    {
+        Debug.Log("🗑️ 清理 RtcEngine 资源...");
+
+        if (RtcEngine != null)
+        {
+            try
+            {
+                // 离开频道
+                RtcEngine.LeaveChannel();
+                // 禁用音频
+                RtcEngine.DisableAudio();
+                // 释放资源
+                RtcEngine.Dispose();
+                Debug.Log("✅ RtcEngine 资源清理完成");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"❌ 清理 RtcEngine 资源时出现异常: {ex.Message}");
+            }
+        }
+    }
+
+    void Update()
+    {
+    }
+
+    private void CheckPermissions()
+    {
+    #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
+        foreach (string permission in permissionList) {
+            if (!Permission.HasUserAuthorizedPermission(permission)) {
+                Permission.RequestUserPermission(permission);
+            }
+        }
+    #endif
+    }
+
+    // ============= 日志辅助方法 =============
+
+    /// <summary>
+    /// 初始化日志系统
+    /// </summary>
+    private void InitializeLogger()
+    {
+        // 如果没有指定LogText，尝试自动查找
+        if (LogText == null)
+        {
+            LogText = GameObject.Find("Canvas/LogText")?.GetComponent<Text>();
+
+            // 如果还是找不到，创建一个
+            if (LogText == null)
+            {
+                CreateLogText();
+            }
+        }
+
+        if (LogText != null)
+        {
+            LogText.text = "=== Agora RTC 日志 ===\n";
+            LogText.fontSize = 24;
+            LogText.color = Color.white;
+            LogText.alignment = TextAnchor.UpperLeft;
+            Debug.Log("✅ 日志Text组件初始化成功");
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ 未找到LogText组件，日志将只在控制台输出");
+        }
+    }
+
+    /// <summary>
+    /// 创建日志Text组件
+    /// </summary>
+    private void CreateLogText()
+    {
+        GameObject canvasGo = GameObject.Find("Canvas");
+        if (canvasGo == null) return;
+
+        GameObject logTextGo = new GameObject("LogText");
+        logTextGo.transform.SetParent(canvasGo.transform, false);
+        logTextGo.layer = LayerMask.NameToLayer("UI");
+
+        RectTransform rt = logTextGo.AddComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0, 0.3f);
+        rt.anchorMax = new Vector2(1, 0.9f);
+        rt.offsetMin = new Vector2(20, 0);
+        rt.offsetMax = new Vector2(-20, -20);
+
+        LogText = logTextGo.AddComponent<Text>();
+        LogText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        LogText.fontSize = 24;
+        LogText.color = Color.white;
+        LogText.alignment = TextAnchor.UpperLeft;
+        LogText.verticalOverflow = VerticalWrapMode.Overflow;
+        LogText.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+        // 添加背景
+        GameObject bgGo = new GameObject("Background");
+        bgGo.transform.SetParent(logTextGo.transform, false);
+        bgGo.layer = LayerMask.NameToLayer("UI");
+        bgGo.transform.SetAsFirstSibling();
+
+        RectTransform bgRt = bgGo.AddComponent<RectTransform>();
+        bgRt.anchorMin = Vector2.zero;
+        bgRt.anchorMax = Vector2.one;
+        bgRt.offsetMin = Vector2.zero;
+        bgRt.offsetMax = Vector2.zero;
+
+        Image bgImg = bgGo.AddComponent<Image>();
+        bgImg.color = new Color(0, 0, 0, 0.7f);
+
+        Debug.Log("✅ 自动创建LogText组件成功");
+    }
+
+    /// <summary>
+    /// 添加日志消息（同时输出到控制台和UI）
+    /// </summary>
+    /// <param name="message">日志消息</param>
+    private void LogMessage(string message)
+    {
+        // 输出到Unity控制台
+        Debug.Log(message);
+
+        // 输出到UI
+        if (LogText != null)
+        {
+            // 添加时间戳
+            string timestamp = System.DateTime.Now.ToString("HH:mm:ss");
+            string logLine = $"[{timestamp}] {message}";
+
+            // 添加到日志构建器
+            logBuilder.AppendLine(logLine);
+
+            // 限制日志行数
+            string[] lines = logBuilder.ToString().Split('\n');
+            if (lines.Length > maxLogLines)
+            {
+                logBuilder.Clear();
+                for (int i = lines.Length - maxLogLines; i < lines.Length; i++)
+                {
+                    logBuilder.AppendLine(lines[i]);
+                }
+            }
+
+            // 更新UI
+            LogText.text = logBuilder.ToString();
+        }
+    }
+
+    /// <summary>
+    /// 添加错误日志
+    /// </summary>
+    private void LogError(string message)
+    {
+        Debug.LogError(message);
+
+        if (LogText != null)
+        {
+            string timestamp = System.DateTime.Now.ToString("HH:mm:ss");
+            string logLine = $"[{timestamp}] <color=red>❌ {message}</color>";
+            logBuilder.AppendLine(logLine);
+
+            // 限制日志行数
+            string[] lines = logBuilder.ToString().Split('\n');
+            if (lines.Length > maxLogLines)
+            {
+                logBuilder.Clear();
+                for (int i = lines.Length - maxLogLines; i < lines.Length; i++)
+                {
+                    logBuilder.AppendLine(lines[i]);
+                }
+            }
+
+            LogText.text = logBuilder.ToString();
+        }
+    }
+
+    /// <summary>
+    /// 添加警告日志
+    /// </summary>
+    private void LogWarning(string message)
+    {
+        Debug.LogWarning(message);
+
+        if (LogText != null)
+        {
+            string timestamp = System.DateTime.Now.ToString("HH:mm:ss");
+            string logLine = $"[{timestamp}] <color=yellow>⚠️ {message}</color>";
+            logBuilder.AppendLine(logLine);
+
+            // 限制日志行数
+            string[] lines = logBuilder.ToString().Split('\n');
+            if (lines.Length > maxLogLines)
+            {
+                logBuilder.Clear();
+                for (int i = lines.Length - maxLogLines; i < lines.Length; i++)
+                {
+                    logBuilder.AppendLine(lines[i]);
+                }
+            }
+
+            LogText.text = logBuilder.ToString();
+        }
+    }
+
+    /// <summary>
+    /// 添加成功日志
+    /// </summary>
+    private void LogSuccess(string message)
+    {
+        Debug.Log(message);
+
+        if (LogText != null)
+        {
+            string timestamp = System.DateTime.Now.ToString("HH:mm:ss");
+            string logLine = $"[{timestamp}] <color=green>✅ {message}</color>";
+            logBuilder.AppendLine(logLine);
+
+            // 限制日志行数
+            string[] lines = logBuilder.ToString().Split('\n');
+            if (lines.Length > maxLogLines)
+            {
+                logBuilder.Clear();
+                for (int i = lines.Length - maxLogLines; i < lines.Length; i++)
+                {
+                    logBuilder.AppendLine(lines[i]);
+                }
+            }
+
+            LogText.text = logBuilder.ToString();
+        }
+    }
+
+}

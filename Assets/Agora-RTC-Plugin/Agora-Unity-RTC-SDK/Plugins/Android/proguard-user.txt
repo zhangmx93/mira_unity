@@ -1,0 +1,39 @@
+# ProGuard rules for Agora RTC SDK
+# This file prevents R8/ProGuard from stripping Agora SDK classes
+
+# Keep all Agora classes and their members
+-keep class io.agora.** { *; }
+-keep interface io.agora.** { *; }
+-keep enum io.agora.** { *; }
+
+# Keep Agora RTC SDK wrapper classes (critical for JNI)
+-keep class io.agora.rtc.** { *; }
+-keep class io.agora.rtc.gaming.unity3d.wrapper.** { *; }
+
+# Keep native methods (called from native code via JNI)
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# Keep RtcEngine and related classes
+-keep class io.agora.rtc2.RtcEngine { *; }
+-keep class io.agora.rtc2.IRtcEngineEventHandler { *; }
+-keep class io.agora.rtc2.Constants { *; }
+
+# Keep callback interfaces
+-keep interface io.agora.rtc2.** { *; }
+
+# Don't warn about missing Agora classes
+-dontwarn io.agora.**
+
+# Keep annotations used by Agora SDK
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes Exceptions
+-keepattributes InnerClasses
+
+# Keep source file and line numbers for debugging
+-keepattributes SourceFile,LineNumberTable
+
+# Keep generic signature of Agora classes
+-keepattributes Signature
