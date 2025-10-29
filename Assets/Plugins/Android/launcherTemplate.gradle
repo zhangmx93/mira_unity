@@ -49,11 +49,26 @@ android {
 
     packagingOptions {
         // Fix for duplicate libopencv_java4.so from rkface and opencv libraries
-        // Keep only the first occurrence
         pickFirst 'lib/arm64-v8a/libopencv_java4.so'
         pickFirst 'lib/armeabi-v7a/libopencv_java4.so'
         pickFirst 'lib/x86/libopencv_java4.so'
         pickFirst 'lib/x86_64/libopencv_java4.so'
+
+        // Fix for duplicate librga.so from rkface and rkllm libraries
+        pickFirst 'lib/arm64-v8a/librga.so'
+        pickFirst 'lib/armeabi-v7a/librga.so'
+        pickFirst 'lib/x86/librga.so'
+        pickFirst 'lib/x86_64/librga.so'
+
+        // Fix for duplicate librknnrt.so (RKNN Runtime) from rkface and rkllm
+        pickFirst 'lib/arm64-v8a/librknnrt.so'
+        pickFirst 'lib/armeabi-v7a/librknnrt.so'
+        pickFirst 'lib/x86/librknnrt.so'
+        pickFirst 'lib/x86_64/librknnrt.so'
+
+        // Preemptively fix other potential Rockchip library conflicts
+        pickFirst 'lib/*/librknpu_ddk.so'
+        pickFirst 'lib/*/librknn_api.so'
     }**PACKAGING_OPTIONS****SPLITS**
 **BUILT_APK_LOCATION**
     bundle {

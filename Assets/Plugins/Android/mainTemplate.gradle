@@ -4,8 +4,9 @@ apply plugin: 'com.android.library'
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    // SenseFlow RKFace dependency - from private Aliyun repository
+    // SenseFlow dependencies - from private Aliyun repository
     implementation 'com.senseflow:rkface:1.0.1'
+    implementation 'com.senseflow:rkllm:1.0.1'
 
     // Test dependency to verify Maven repository connection
     implementation 'com.google.code.gson:gson:2.8.9'
