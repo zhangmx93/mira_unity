@@ -65,8 +65,8 @@ public class CameraCapture : MonoBehaviour
 
     void Start()
     {
-        // 自动启动摄像头
-        StartCamera();
+        // 请求摄像头权限后再启动
+        StartCoroutine(RequestCameraPermissionAndStart());
     }
 
     void Update()
@@ -114,6 +114,39 @@ public class CameraCapture : MonoBehaviour
     #endregion
 
     #region 摄像头控制
+
+    /// <summary>
+    /// 请求摄像头权限并启动
+    /// </summary>
+    private System.Collections.IEnumerator RequestCameraPermissionAndStart()
+    {
+        #if UNITY_ANDROID || UNITY_IOS
+        // Android/iOS: 等待一小段时间，避免与麦克风权限请求冲突
+        // 如果场景中同时有CameraCapture和MicrophoneCapture，让它们依次请求权限
+        yield return new WaitForSeconds(1.5f);
+
+        if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
+        {
+            Debug.Log("CameraCapture: 请求摄像头权限...");
+            yield return Application.RequestUserAuthorization(UserAuthorization.WebCam);
+        }
+
+        if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
+        {
+            Debug.LogError("CameraCapture: 摄像头权限被拒绝");
+            yield break;
+        }
+
+        Debug.Log("CameraCapture: 摄像头权限已授予");
+        #else
+        // macOS/Windows: 直接访问设备触发权限弹窗
+        int deviceCount = WebCamTexture.devices.Length;
+        yield return new WaitForSeconds(0.5f);
+        #endif
+
+        // 启动摄像头
+        StartCamera();
+    }
 
     /// <summary>
     /// 启动摄像头
