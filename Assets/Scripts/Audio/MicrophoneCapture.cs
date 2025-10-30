@@ -72,8 +72,34 @@ public class MicrophoneCapture : MonoBehaviour
 
     void Start()
     {
-        // 请求麦克风权限后再启动
-        StartCoroutine(RequestMicrophonePermissionAndStart());
+        // 如果有PermissionManager，等待它完成权限请求
+        // 否则自己请求权限
+        PermissionManager permissionManager = FindObjectOfType<PermissionManager>();
+        if (permissionManager != null)
+        {
+            StartCoroutine(WaitForPermissionManager());
+        }
+        else
+        {
+            StartCoroutine(RequestMicrophonePermissionAndStart());
+        }
+    }
+
+    /// <summary>
+    /// 等待PermissionManager完成权限请求
+    /// </summary>
+    private System.Collections.IEnumerator WaitForPermissionManager()
+    {
+        PermissionManager permissionManager = PermissionManager.Instance;
+
+        // 等待PermissionManager完成所有权限请求
+        while (permissionManager != null && !permissionManager.AreAllPermissionsGranted())
+        {
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        // 权限请求完成后，直接启动麦克风
+        StartMicrophone();
     }
 
 
