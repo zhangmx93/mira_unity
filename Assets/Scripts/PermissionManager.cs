@@ -72,12 +72,26 @@ public class PermissionManager : MonoBehaviour
         }
 
         // 2. 等待一小段时间，确保上一个权限对话框完全关闭
+        if (enableDebugLog)
+            Debug.Log("PermissionManager: 等待 0.5 秒后请求摄像头权限...");
         yield return new WaitForSeconds(0.5f);
 
         // 3. 请求摄像头权限
+        if (enableDebugLog)
+            Debug.Log($"PermissionManager: requestCamera = {requestCamera}");
+
         if (requestCamera)
         {
+            if (enableDebugLog)
+                Debug.Log("PermissionManager: 开始调用 RequestCameraPermission()...");
             yield return StartCoroutine(RequestCameraPermission());
+            if (enableDebugLog)
+                Debug.Log("PermissionManager: RequestCameraPermission() 完成");
+        }
+        else
+        {
+            if (enableDebugLog)
+                Debug.Log("PermissionManager: requestCamera = false, 跳过摄像头权限请求");
         }
 
         // 检查所有权限是否都已授予
@@ -150,14 +164,32 @@ public class PermissionManager : MonoBehaviour
     {
         #if UNITY_ANDROID || UNITY_IOS
         if (enableDebugLog)
-            Debug.Log("PermissionManager: 请求摄像头权限...");
+            Debug.Log("PermissionManager: >>> 进入 RequestCameraPermission 方法");
 
-        if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
+        bool hasPermissionBefore = Application.HasUserAuthorization(UserAuthorization.WebCam);
+        if (enableDebugLog)
+            Debug.Log($"PermissionManager: 摄像头权限检查 - 当前状态: {hasPermissionBefore}");
+
+        if (!hasPermissionBefore)
         {
+            if (enableDebugLog)
+                Debug.Log("PermissionManager: 准备调用 RequestUserAuthorization(WebCam)...");
+
             yield return Application.RequestUserAuthorization(UserAuthorization.WebCam);
+
+            if (enableDebugLog)
+                Debug.Log("PermissionManager: RequestUserAuthorization(WebCam) 调用完成");
+        }
+        else
+        {
+            if (enableDebugLog)
+                Debug.Log("PermissionManager: 摄像头权限已存在，跳过请求");
         }
 
         cameraGranted = Application.HasUserAuthorization(UserAuthorization.WebCam);
+
+        if (enableDebugLog)
+            Debug.Log($"PermissionManager: 摄像头权限最终状态: {cameraGranted}");
 
         if (cameraGranted)
         {
