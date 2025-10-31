@@ -5,10 +5,13 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/VR_Metaverse SpaceStation.unity
     guid: 8d334bedd7aab435fa0ca50d3a405346
   - enabled: 0
     path: Assets/Agora-RTC-Plugin/API-Example/Examples/Basic/JoinChannelAudio/BasicAudioCallScene.unity
     guid: 1af6c3e08db844534ad959cdf0127444
+  - enabled: 1
+    path: Assets/Scenes/New Scene.unity
+    guid: 054920bd920404a229163a8270315be1
   m_configObjects: {}
