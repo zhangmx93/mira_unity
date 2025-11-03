@@ -70,7 +70,7 @@ public class RKLLMExample : MonoBehaviour
         // 初始化响应文本
         if (responseText != null)
         {
-            responseText.text = "等待输入...";
+            responseText.text = "wait...";
         }
     }
 
@@ -105,7 +105,7 @@ public class RKLLMExample : MonoBehaviour
         responseBuilder.Clear();
         if (responseText != null)
         {
-            responseText.text = "思考中...";
+            responseText.text = "thinking...";
         }
 
         string message = inputField.text;
@@ -141,7 +141,7 @@ public class RKLLMExample : MonoBehaviour
     {
         if (responseText != null)
         {
-            responseText.text = $"错误: {error}";
+            responseText.text = $"error: {error}";
         }
 
         Debug.LogError($"RKLLMExample: LLM 错误 - {error}");

@@ -347,9 +347,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 67992670}
-  - component: {fileID: 67992672}
   - component: {fileID: 67992673}
   - component: {fileID: 67992674}
+  - component: {fileID: 67992675}
   m_Layer: 0
   m_Name: LLM
   m_TagString: Untagged
@@ -372,22 +372,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 294615134}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &67992672
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 67992669}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd85dd27177854793a50f737ce8ebfd9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  inputField: {fileID: 1642285627}
-  sendButton: {fileID: 2108684104}
-  responseText: {fileID: 1421396372}
-  rkllmManager: {fileID: 0}
 --- !u!114 &67992673
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -416,6 +400,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ed622fb29472d4985a6e29823ef3c9c7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &67992675
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 67992669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd85dd27177854793a50f737ce8ebfd9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  inputField: {fileID: 1642285627}
+  sendButton: {fileID: 2108684104}
+  responseText: {fileID: 370491903}
+  rkllmManager: {fileID: 67992673}
 --- !u!1 &231969535
 GameObject:
   m_ObjectHideFlags: 0
@@ -766,8 +766,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 714, y: 244}
-  m_SizeDelta: {x: 200, y: 50}
+  m_AnchoredPosition: {x: 709, y: 63.033386}
+  m_SizeDelta: {x: 485.9719, y: 411.9331}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &370491903
 MonoBehaviour:
@@ -789,7 +789,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: wait
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -816,8 +816,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 100
-  m_fontSizeBase: 100
+  m_fontSize: 40
+  m_fontSizeBase: 40
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
