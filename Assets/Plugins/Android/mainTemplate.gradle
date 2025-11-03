@@ -5,8 +5,9 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     // SenseFlow dependencies - from private Aliyun repository
-    implementation 'com.senseflow:rkface:1.0.1'
-    implementation 'com.senseflow:rkllm:1.0.1'
+    implementation 'com.senseflow:rkface:1.0.2'
+    implementation 'com.senseflow:rkllm:1.0.5'
+    implementation 'com.senseflow:rktts:1.0.0'
 
     // Test dependency to verify Maven repository connection
     implementation 'com.google.code.gson:gson:2.8.9'

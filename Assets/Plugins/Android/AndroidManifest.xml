@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-    android:sharedUserId="android.uid.system"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.DefaultCompany.UI_test">
 
     <!-- 摄像头权限 -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -12,6 +12,12 @@
     <!-- 麦克风权限 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- 存储权限 - SDK需要访问模型文件 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
 
     <application>
         <activity android:name="com.unity3d.player.UnityPlayerActivity"

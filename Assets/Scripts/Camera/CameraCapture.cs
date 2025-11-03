@@ -499,6 +499,25 @@ public class CameraCapture : MonoBehaviour
     }
 
     /// <summary>
+    /// 获取当前帧（实时捕获）
+    /// </summary>
+    public Texture2D GetCurrentFrame()
+    {
+        if (webCamTexture == null || !isRunning)
+        {
+            Debug.LogWarning("CameraCapture: 摄像头未运行，无法获取当前帧");
+            return null;
+        }
+
+        // 创建新的 Texture2D 包含当前帧
+        Texture2D currentFrame = new Texture2D(webCamTexture.width, webCamTexture.height, TextureFormat.RGB24, false);
+        currentFrame.SetPixels32(webCamTexture.GetPixels32());
+        currentFrame.Apply();
+
+        return currentFrame;
+    }
+
+    /// <summary>
     /// 获取最新捕获的图片数据（字节数组）
     /// </summary>
     public byte[] GetLatestImageBytes()

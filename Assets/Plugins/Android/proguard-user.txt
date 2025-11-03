@@ -37,3 +37,32 @@
 
 # Keep generic signature of Agora classes
 -keepattributes Signature
+
+# ==========================================
+# ProGuard rules for SenseFlow SDK
+# ==========================================
+
+# Keep all SenseFlow classes and their members
+-keep class com.senseflow.** { *; }
+-keep interface com.senseflow.** { *; }
+-keep enum com.senseflow.** { *; }
+
+# Keep RKLLM classes
+-keep class com.senseflow.rkllm.** { *; }
+-keep interface com.senseflow.rkllm.OnResultListener { *; }
+-keep class com.senseflow.rkllm.SenseRKLlmDetector { *; }
+-keep class com.senseflow.rkllm.ModelConfig { *; }
+
+# Keep RKFace classes
+-keep class com.senseflow.rkface.** { *; }
+
+# Keep RKTTS classes
+-keep class com.senseflow.rktts.** { *; }
+
+# Don't warn about missing SenseFlow classes
+-dontwarn com.senseflow.**
+
+# Keep native methods for SenseFlow SDK
+-keepclasseswithmembernames class com.senseflow.** {
+    native <methods>;
+}
