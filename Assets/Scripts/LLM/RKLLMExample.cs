@@ -22,8 +22,14 @@ public class RKLLMExample : MonoBehaviour
     [Tooltip("RKLLM 管理器")]
     public RKLLMManager rkllmManager;
 
+    [Tooltip("是否在对话结束后自动播放 TTS")]
+    public bool enableAutoTTS = true;
+
     // 累积的响应文本
     private System.Text.StringBuilder responseBuilder = new System.Text.StringBuilder();
+
+    // TTS 管理器引用
+    private RKTTSManager ttsManager;
 
     void Start()
     {
@@ -61,10 +67,26 @@ public class RKLLMExample : MonoBehaviour
         {
             rkllmManager.OnLLMResult += OnLLMResult;
             rkllmManager.OnLLMError += OnLLMError;
+            rkllmManager.OnLLMComplete += OnLLMComplete;  // 订阅对话完成事件
         }
         else
         {
             Debug.LogError("RKLLMExample: 未找到 RKLLMManager");
+        }
+
+        // 查找 TTS 管理器
+        if (enableAutoTTS)
+        {
+            ttsManager = RKTTSManager.Instance;
+            if (ttsManager != null)
+            {
+                Debug.Log("RKLLMExample: 找到 RKTTSManager，已启用自动 TTS");
+            }
+            else
+            {
+                Debug.LogWarning("RKLLMExample: 未找到 RKTTSManager，自动 TTS 将被禁用");
+                enableAutoTTS = false;
+            }
         }
 
         // 初始化响应文本
@@ -81,6 +103,7 @@ public class RKLLMExample : MonoBehaviour
         {
             rkllmManager.OnLLMResult -= OnLLMResult;
             rkllmManager.OnLLMError -= OnLLMError;
+            rkllmManager.OnLLMComplete -= OnLLMComplete;
         }
     }
 
@@ -145,5 +168,29 @@ public class RKLLMExample : MonoBehaviour
         }
 
         Debug.LogError($"RKLLMExample: LLM 错误 - {error}");
+    }
+
+    /// <summary>
+    /// 处理 LLM 对话完成（callState == 2）
+    /// </summary>
+    private void OnLLMComplete()
+    {
+        Debug.Log("RKLLMExample: LLM 对话完成");
+
+        // 如果启用了自动 TTS，将完整的响应内容发送给 TTS
+        if (enableAutoTTS && ttsManager != null)
+        {
+            string fullResponse = responseBuilder.ToString();
+
+            if (!string.IsNullOrEmpty(fullResponse))
+            {
+                Debug.Log($"RKLLMExample: 发送到 TTS - {fullResponse.Length} 个字符");
+                ttsManager.Speak(fullResponse);
+            }
+            else
+            {
+                Debug.LogWarning("RKLLMExample: 响应内容为空，跳过 TTS");
+            }
+        }
     }
 }

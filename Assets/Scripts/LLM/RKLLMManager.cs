@@ -7,6 +7,7 @@ using System.Collections;
 /// RKLLM 管理器
 /// 用于在 Unity 中调用 Android 原生的 RKLLM 功能
 /// </summary>
+[DefaultExecutionOrder(100)]  // 延后执行顺序，等待 SDKLoader 启用
 public class RKLLMManager : MonoBehaviour
 {
     [Header("配置")]
@@ -31,6 +32,7 @@ public class RKLLMManager : MonoBehaviour
     // 事件
     public event Action<string> OnLLMResult;
     public event Action<string> OnLLMError;
+    public event Action OnLLMComplete;  // 对话完成事件（callState == 2）
 
     // 单例
     private static RKLLMManager instance;
@@ -53,12 +55,17 @@ public class RKLLMManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         Debug.Log("RKLLMManager: 单例设置完成");
+
+        // 延迟加载模式：初始时禁用，等待 SDKLoader 启用
+        enabled = false;
+        Debug.Log("RKLLMManager: 已禁用，等待 SDKLoader 延迟加载");
     }
 
-    void Start()
+    void OnEnable()
     {
-        Debug.Log($"RKLLMManager: Start() 被调用 - Platform: {Application.platform}");
+        Debug.Log("RKLLMManager: OnEnable() 被调用 - 开始初始化");
 
+        // 被 SDKLoader 启用时才开始初始化流程
 #if UNITY_ANDROID && !UNITY_EDITOR
         Debug.Log("RKLLMManager: 检测到 Android 平台，准备初始化...");
 
@@ -354,6 +361,9 @@ public class RKLLMManager : MonoBehaviour
         {
             if (enableDebugLog)
                 Debug.Log("RKLLMManager: 对话结束");
+
+            // 触发对话完成事件
+            OnLLMComplete?.Invoke();
             return;
         }
 

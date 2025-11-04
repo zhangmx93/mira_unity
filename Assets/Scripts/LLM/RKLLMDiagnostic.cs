@@ -82,18 +82,15 @@ public class RKLLMDiagnostic : MonoBehaviour
                     {
                         try
                         {
-                            using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                            // RKLLM SDK 使用无参数的 getInstance()，类似 RKFace SDK
+                            AndroidJavaObject instance = javaClass.CallStatic<AndroidJavaObject>("getInstance");
+                            if (instance != null)
                             {
-                                AndroidJavaObject activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
-                                AndroidJavaObject instance = javaClass.CallStatic<AndroidJavaObject>("getInstance", activity);
-                                if (instance != null)
-                                {
-                                    Debug.Log($"   ✅ getInstance() 方法调用成功");
-                                }
-                                else
-                                {
-                                    Debug.LogWarning($"   ⚠️ getInstance() 返回 null");
-                                }
+                                Debug.Log($"   ✅ getInstance() 方法调用成功 (无参数)");
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"   ⚠️ getInstance() 返回 null");
                             }
                         }
                         catch (System.Exception e)
