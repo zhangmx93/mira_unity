@@ -27,6 +27,19 @@ public class TTSAudioPlayer : MonoBehaviour
     [Tooltip("可视化采样数量")]
     public int visualizationSamples = 64;
 
+    [Header("动画集成")]
+    [Tooltip("是否启用说话动画")]
+    public bool enableTalkAnimation = true;
+
+    [Tooltip("动画管理器（如果为空会自动查找）")]
+    public AnimationManager animationManager;
+
+    [Tooltip("说话动画名称")]
+    public string talkAnimationName = "Talk";
+
+    [Tooltip("空闲动画名称")]
+    public string idleAnimationName = "Idle";
+
     private AudioSource audioSource;
     private List<float> audioBuffer = new List<float>();
     private float[] visualizationData;
@@ -40,6 +53,20 @@ public class TTSAudioPlayer : MonoBehaviour
         if (enableVisualization)
         {
             visualizationData = new float[visualizationSamples];
+        }
+
+        // 自动查找 AnimationManager
+        if (enableTalkAnimation && animationManager == null)
+        {
+            animationManager = FindObjectOfType<AnimationManager>();
+            if (animationManager != null)
+            {
+                Debug.Log("TTSAudioPlayer: 已自动找到 AnimationManager");
+            }
+            else
+            {
+                Debug.LogWarning("TTSAudioPlayer: 未找到 AnimationManager，说话动画将不可用");
+            }
         }
     }
 
@@ -98,6 +125,21 @@ public class TTSAudioPlayer : MonoBehaviour
 
             float duration = (float)audioBuffer.Count / sampleRate;
             Debug.Log($"TTSAudioPlayer: 播放音频 - 时长: {duration:F2}秒, 采样数: {audioBuffer.Count}, 采样率: {sampleRate}Hz");
+
+            // 启动说话动画
+            if (enableTalkAnimation && animationManager != null)
+            {
+                animationManager.PlayAnimation(talkAnimationName);
+                Debug.Log($"TTSAudioPlayer: 已启动说话动画 '{talkAnimationName}'");
+            }
+
+            // 播放后清空缓冲区，防止下次重复播放
+            // 注意：我们在创建 AudioClip 后才清空，因为 SetData 会复制数据
+            audioBuffer.Clear();
+            Debug.Log("TTSAudioPlayer: 已清空音频缓冲区");
+
+            // 启动协程，在音频播放完成后停止动画
+            StartCoroutine(StopTalkAnimationAfterAudio(duration));
         }
         catch (System.Exception e)
         {
@@ -112,6 +154,31 @@ public class TTSAudioPlayer : MonoBehaviour
     public void Stop()
     {
         StopIfPlaying();
+        isPlaying = false;
+
+        // 停止说话动画，返回空闲状态
+        if (enableTalkAnimation && animationManager != null)
+        {
+            animationManager.PlayAnimation(idleAnimationName);
+            Debug.Log($"TTSAudioPlayer: 已停止说话动画，返回 '{idleAnimationName}'");
+        }
+    }
+
+    /// <summary>
+    /// 协程：等待音频播放完成后停止说话动画
+    /// </summary>
+    private System.Collections.IEnumerator StopTalkAnimationAfterAudio(float duration)
+    {
+        // 等待音频播放完成
+        yield return new WaitForSeconds(duration);
+
+        // 停止说话动画，返回空闲状态
+        if (enableTalkAnimation && animationManager != null)
+        {
+            animationManager.PlayAnimation(idleAnimationName);
+            Debug.Log($"TTSAudioPlayer: 音频播放完成，已切换到 '{idleAnimationName}' 动画");
+        }
+
         isPlaying = false;
     }
 

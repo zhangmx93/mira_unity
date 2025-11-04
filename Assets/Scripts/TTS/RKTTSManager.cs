@@ -385,10 +385,12 @@ public class RKTTSManager : MonoBehaviour
             if (enableDebugLog)
                 Debug.Log($"RKTTSManager: 开始 TTS - 文本: '{text}', 速度: {actualSpeed}, 音调: {actualPitch}");
 
-            // 清空 audioPlayer 的缓冲区，准备接收新数据
+            // 清空 audioPlayer 的缓冲区，准备接收新数据（防止重复播放）
             if (audioPlayer != null)
             {
                 audioPlayer.ClearBuffer();
+                if (enableDebugLog)
+                    Debug.Log("RKTTSManager: 已清空音频缓冲区");
             }
 
             // 根据 Kotlin 示例: tts(text: String, speed: Float, pitch: Int)

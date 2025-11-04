@@ -294,6 +294,10 @@ MonoBehaviour:
   volume: 1
   enableVisualization: 1
   visualizationSamples: 64
+  enableTalkAnimation: 1
+  animationManager: {fileID: 321184650}
+  talkAnimationName: Azakiel|sc_talk_1_005
+  idleAnimationName: Azakiel|idle_normal_1_1_006
 --- !u!82 &47948094
 AudioSource:
   m_ObjectHideFlags: 0

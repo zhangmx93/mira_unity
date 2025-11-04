@@ -1,41 +1,13 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1107 &-4601237214355198814
-AnimatorStateMachine:
-  serializedVersion: 6
-  m_ObjectHideFlags: 1
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: Base Layer
-  m_ChildStates:
-  - serializedVersion: 1
-    m_State: {fileID: 1586771785323626300}
-    m_Position: {x: 250, y: 270, z: 0}
-  - serializedVersion: 1
-    m_State: {fileID: 6936320917947022623}
-    m_Position: {x: 570, y: 80, z: 0}
-  - serializedVersion: 1
-    m_State: {fileID: -4415456531890720340}
-    m_Position: {x: 671.195, y: 255.6539, z: 0}
-  m_ChildStateMachines: []
-  m_AnyStateTransitions: []
-  m_EntryTransitions: []
-  m_StateMachineTransitions: {}
-  m_StateMachineBehaviours: []
-  m_AnyStatePosition: {x: 60, y: -70, z: 0}
-  m_EntryPosition: {x: 50, y: 120, z: 0}
-  m_ExitPosition: {x: 800, y: 120, z: 0}
-  m_ParentStateMachinePosition: {x: 800, y: 20, z: 0}
-  m_DefaultState: {fileID: 1586771785323626300}
---- !u!1102 &-4415456531890720340
+--- !u!1102 &-5737051253257594013
 AnimatorState:
   serializedVersion: 6
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Azakiel|sc_talk_1
+  m_Name: Azakiel|sc_talk_1_005
   m_Speed: 1
   m_CycleOffset: 0
   m_Transitions: []
@@ -48,12 +20,37 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -4410586568034819867, guid: a5e07dce6176a45538a31062bdf11dc6, type: 3}
+  m_Motion: {fileID: -652566122004806739, guid: a5e07dce6176a45538a31062bdf11dc6, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
   m_CycleOffsetParameter: 
   m_TimeParameter: 
+--- !u!1107 &-4601237214355198814
+AnimatorStateMachine:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Base Layer
+  m_ChildStates:
+  - serializedVersion: 1
+    m_State: {fileID: 1482564484769674176}
+    m_Position: {x: 290, y: 320, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: -5737051253257594013}
+    m_Position: {x: 460, y: 220, z: 0}
+  m_ChildStateMachines: []
+  m_AnyStateTransitions: []
+  m_EntryTransitions: []
+  m_StateMachineTransitions: {}
+  m_StateMachineBehaviours: []
+  m_AnyStatePosition: {x: 60, y: -70, z: 0}
+  m_EntryPosition: {x: 50, y: 120, z: 0}
+  m_ExitPosition: {x: 800, y: 120, z: 0}
+  m_ParentStateMachinePosition: {x: 800, y: 20, z: 0}
+  m_DefaultState: {fileID: 1482564484769674176}
 --- !u!91 &9100000
 AnimatorController:
   m_ObjectHideFlags: 0
@@ -76,14 +73,14 @@ AnimatorController:
     m_IKPass: 0
     m_SyncedLayerAffectsTiming: 0
     m_Controller: {fileID: 9100000}
---- !u!1102 &1586771785323626300
+--- !u!1102 &1482564484769674176
 AnimatorState:
   serializedVersion: 6
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Azakiel|walk_normal_1_002
+  m_Name: Azakiel|idle_normal_1_1_006
   m_Speed: 1
   m_CycleOffset: 0
   m_Transitions: []
@@ -96,33 +93,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 6460016104405649964, guid: a5e07dce6176a45538a31062bdf11dc6, type: 3}
-  m_Tag: 
-  m_SpeedParameter: 
-  m_MirrorParameter: 
-  m_CycleOffsetParameter: 
-  m_TimeParameter: 
---- !u!1102 &6936320917947022623
-AnimatorState:
-  serializedVersion: 6
-  m_ObjectHideFlags: 1
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: Azakiel|sc_greet_2
-  m_Speed: 1
-  m_CycleOffset: 0
-  m_Transitions: []
-  m_StateMachineBehaviours: []
-  m_Position: {x: 50, y: 50, z: 0}
-  m_IKOnFeet: 0
-  m_WriteDefaultValues: 1
-  m_Mirror: 0
-  m_SpeedParameterActive: 0
-  m_MirrorParameterActive: 0
-  m_CycleOffsetParameterActive: 0
-  m_TimeParameterActive: 0
-  m_Motion: {fileID: 5488935131057583833, guid: a5e07dce6176a45538a31062bdf11dc6, type: 3}
+  m_Motion: {fileID: 5396736122939086829, guid: a5e07dce6176a45538a31062bdf11dc6, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
