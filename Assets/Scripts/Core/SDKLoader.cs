@@ -11,7 +11,7 @@ public class SDKLoader : MonoBehaviour
     [Tooltip("启动后延迟多久开始加载第一个 SDK（秒）")]
     public float initialDelay = 1.0f;  // 从 0.5 增加到 1.0
 
-    [Tooltip("RKLLM 和 RKTTS 之间的延迟时间（秒）")]
+    [Tooltip("各 SDK 之间的延迟时间（秒）")]
     public float delayBetweenSDKs = 2.0f;  // 从 1.0 增加到 2.0
 
     [Header("SDK 引用")]
@@ -20,6 +20,9 @@ public class SDKLoader : MonoBehaviour
 
     [Tooltip("TTS 管理器（如果为空会自动查找）")]
     public RKTTSManager ttsManager;
+
+    [Tooltip("Face 管理器（如果为空会自动查找）")]
+    public RKFaceManager faceManager;
 
     [Header("调试")]
     [Tooltip("是否启用调试日志")]
@@ -74,6 +77,21 @@ public class SDKLoader : MonoBehaviour
                 Debug.LogWarning("SDKLoader: ⚠️ 未找到 RKTTSManager");
             }
         }
+
+        // 查找 Face Manager
+        if (faceManager == null)
+        {
+            faceManager = FindObjectOfType<RKFaceManager>();
+            if (faceManager != null)
+            {
+                if (enableDebugLog)
+                    Debug.Log("SDKLoader: ✅ 找到 RKFaceManager");
+            }
+            else
+            {
+                Debug.LogWarning("SDKLoader: ⚠️ 未找到 RKFaceManager（可选）");
+            }
+        }
     }
 
     /// <summary>
@@ -91,7 +109,7 @@ public class SDKLoader : MonoBehaviour
 
         // === 第一步：加载 RKLLM ===
         if (enableDebugLog)
-            Debug.Log("SDKLoader: [1/2] 正在加载 RKLLM...");
+            Debug.Log("SDKLoader: [1/3] 正在加载 RKLLM...");
 
         if (llmManager != null)
         {
@@ -119,7 +137,7 @@ public class SDKLoader : MonoBehaviour
 
         // === 第二步：加载 RKTTS ===
         if (enableDebugLog)
-            Debug.Log("SDKLoader: [2/2] 正在加载 RKTTS...");
+            Debug.Log("SDKLoader: [2/3] 正在加载 RKTTS...");
 
         if (ttsManager != null)
         {
@@ -137,6 +155,38 @@ public class SDKLoader : MonoBehaviour
         else
         {
             Debug.LogWarning("SDKLoader: ⚠️ 跳过 RKTTS（未找到管理器）");
+        }
+
+        // 延迟一段时间再加载下一个 SDK
+        if (faceManager != null)
+        {
+            if (enableDebugLog)
+                Debug.Log($"SDKLoader: 等待 {delayBetweenSDKs} 秒...");
+
+            yield return new WaitForSeconds(delayBetweenSDKs);
+        }
+
+        // === 第三步：加载 RKFace（可选）===
+        if (enableDebugLog)
+            Debug.Log("SDKLoader: [3/3] 正在加载 RKFace...");
+
+        if (faceManager != null)
+        {
+            // 启用 Face Manager（会触发 OnEnable 开始初始化）
+            faceManager.enabled = true;
+
+            if (enableDebugLog)
+                Debug.Log("SDKLoader: ✅ RKFace 已启用，正在后台初始化");
+
+            // 分帧加载，避免阻塞主线程
+            yield return null;
+            yield return null;
+            yield return null;
+        }
+        else
+        {
+            if (enableDebugLog)
+                Debug.Log("SDKLoader: ⚠️ 跳过 RKFace（未找到管理器，这是可选的）");
         }
 
         // 完成
@@ -160,8 +210,9 @@ public class SDKLoader : MonoBehaviour
     {
         bool llmReady = llmManager != null && llmManager.IsInitialized();
         bool ttsReady = ttsManager != null && ttsManager.IsInitialized();
+        bool faceReady = faceManager == null || faceManager.IsInitialized; // Face 是可选的
 
-        return llmReady && ttsReady;
+        return llmReady && ttsReady && faceReady;
     }
 
     /// <summary>
@@ -198,8 +249,9 @@ public class SDKLoader : MonoBehaviour
         // 检查各 SDK 状态
         bool llmReady = llmManager != null && llmManager.IsInitialized();
         bool ttsReady = ttsManager != null && ttsManager.IsInitialized();
+        bool faceReady = faceManager == null || faceManager.IsInitialized;
 
-        if (llmReady && ttsReady)
+        if (llmReady && ttsReady && faceReady)
         {
             return "✅ 所有 SDK 就绪";
         }
@@ -213,7 +265,12 @@ public class SDKLoader : MonoBehaviour
 
         if (ttsManager != null)
         {
-            status += ttsReady ? "✅ TTS 就绪" : "⏳ TTS 初始化中...";
+            status += ttsReady ? "✅ TTS 就绪\n" : "⏳ TTS 初始化中...\n";
+        }
+
+        if (faceManager != null)
+        {
+            status += faceReady ? "✅ Face 就绪" : "⏳ Face 初始化中...";
         }
 
         return status;
@@ -238,6 +295,7 @@ public class SDKLoader : MonoBehaviour
         // 禁用所有 SDK
         if (llmManager != null) llmManager.enabled = false;
         if (ttsManager != null) ttsManager.enabled = false;
+        if (faceManager != null) faceManager.enabled = false;
 
         // 重置状态
         loadingComplete = false;

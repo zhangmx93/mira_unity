@@ -1,10 +1,12 @@
 using UnityEngine;
 using System;
+using System.Collections;
 
 /// <summary>
 /// SenseFlow RKFace SDK 使用示例
 /// 此脚本演示如何在 Unity 中调用 Android 原生的 RKFace SDK
 /// </summary>
+[DefaultExecutionOrder(100)]  // 延后执行顺序，等待 SDKLoader 启用
 public class RKFaceManager : MonoBehaviour
 {
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -14,67 +16,158 @@ public class RKFaceManager : MonoBehaviour
 #endif
 
     [Header("RKFace Settings")]
-    [Tooltip("是否在启动时初始化 RKFace SDK")]
-    public bool initializeOnStart = true;
-
     [Tooltip("RKFace 模型路径（相对于 StreamingAssets）")]
     public string modelPath = "rkface_model";
 
+    [Tooltip("是否启用调试日志")]
+    public bool enableDebugLog = true;
+
     private bool isInitialized = false;
 
-    void Start()
+    void Awake()
     {
-        if (initializeOnStart)
+        Debug.Log("RKFaceManager: Awake() 被调用");
+
+        // 延迟加载模式：初始时禁用，等待 SDKLoader 启用
+        enabled = false;
+        Debug.Log("RKFaceManager: 已禁用，等待 SDKLoader 延迟加载");
+    }
+
+    void OnEnable()
+    {
+        Debug.Log("RKFaceManager: OnEnable() 被调用 - 开始初始化");
+
+        // 被 SDKLoader 启用时才开始初始化流程
+#if UNITY_ANDROID && !UNITY_EDITOR
+        Debug.Log("RKFaceManager: 检测到 Android 平台，准备初始化...");
+
+        // 请求存储权限（SDK需要访问模型文件）
+        RequestStoragePermissions();
+
+        // 延迟初始化，等待权限授予
+        StartCoroutine(InitializeAfterPermissions());
+#else
+        if (enableDebugLog)
+            Debug.LogWarning("RKFaceManager: 当前平台不支持 RKFace (仅支持 Android)");
+#endif
+    }
+
+    /// <summary>
+    /// 请求存储权限
+    /// </summary>
+    private void RequestStoragePermissions()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageRead))
         {
-            InitializeRKFace();
+            Debug.Log("RKFaceManager: 请求读取存储权限...");
+            UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.ExternalStorageRead);
         }
+
+        if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageWrite))
+        {
+            Debug.Log("RKFaceManager: 请求写入存储权限...");
+            UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.ExternalStorageWrite);
+        }
+#endif
+    }
+
+    /// <summary>
+    /// 等待权限授予后初始化
+    /// </summary>
+    private IEnumerator InitializeAfterPermissions()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        // 等待用户授予权限
+        float timeout = 10f;
+        float elapsed = 0f;
+
+        while (elapsed < timeout)
+        {
+            if (UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageRead))
+            {
+                Debug.Log("RKFaceManager: 存储权限已授予，开始初始化");
+                InitializeRKFace();
+                yield break;
+            }
+
+            yield return new WaitForSeconds(0.5f);
+            elapsed += 0.5f;
+        }
+
+        // 超时或用户拒绝权限
+        Debug.LogWarning("RKFaceManager: 未获得存储权限，尝试继续初始化（可能失败）");
+        InitializeRKFace();
+#endif
+        yield return null;
     }
 
     /// <summary>
     /// 初始化 RKFace SDK
     /// </summary>
-    public void InitializeRKFace()
+    private void InitializeRKFace()
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
         try
         {
-            Debug.Log("[RKFace] 开始初始化 RKFace SDK...");
+            if (enableDebugLog)
+                Debug.Log("RKFaceManager: 开始初始化 RKFace SDK...");
 
-            // 获取当前 Activity
+            // 步骤 1: 获取当前 Activity
+            if (enableDebugLog)
+                Debug.Log("RKFaceManager: [1/3] 获取 Unity Activity...");
+
             unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
             currentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
 
-            // 创建 RKFace 实例
-            // 注意：实际的类名需要根据 RKFace SDK 的文档进行调整
+            if (currentActivity == null)
+            {
+                Debug.LogError("RKFaceManager: 无法获取 Unity Activity");
+                return;
+            }
+
+            if (enableDebugLog)
+                Debug.Log("RKFaceManager: [1/3] ✅ Unity Activity 获取成功");
+
+            // 步骤 2: 创建 RKFace 实例
+            if (enableDebugLog)
+                Debug.Log("RKFaceManager: [2/3] 创建 RKFaceSDK 实例...");
+
             AndroidJavaClass rkfaceClass = new AndroidJavaClass("com.senseflow.rkface.RKFaceSDK");
             rkfaceInstance = rkfaceClass.CallStatic<AndroidJavaObject>("getInstance");
 
-            if (rkfaceInstance != null)
+            if (rkfaceInstance == null)
             {
-                // 初始化 SDK
-                bool success = rkfaceInstance.Call<bool>("init", currentActivity, modelPath);
+                Debug.LogError("RKFaceManager: 无法获取 RKFace SDK 实例");
+                return;
+            }
 
-                if (success)
-                {
-                    isInitialized = true;
-                    Debug.Log("[RKFace] RKFace SDK 初始化成功！");
-                }
-                else
-                {
-                    Debug.LogError("[RKFace] RKFace SDK 初始化失败！");
-                }
+            if (enableDebugLog)
+                Debug.Log("RKFaceManager: [2/3] ✅ RKFaceSDK 实例创建成功");
+
+            // 步骤 3: 初始化 SDK
+            if (enableDebugLog)
+                Debug.Log("RKFaceManager: [3/3] 初始化 SDK...");
+
+            bool success = rkfaceInstance.Call<bool>("init", currentActivity, modelPath);
+
+            if (success)
+            {
+                isInitialized = true;
+                if (enableDebugLog)
+                    Debug.Log("RKFaceManager: ✅ RKFace SDK 初始化成功！");
             }
             else
             {
-                Debug.LogError("[RKFace] 无法获取 RKFace SDK 实例！");
+                Debug.LogError("RKFaceManager: RKFace SDK 初始化失败！");
+                isInitialized = false;
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"[RKFace] 初始化异常: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"RKFaceManager: 初始化异常 - {e.Message}\n{e.StackTrace}");
+            isInitialized = false;
         }
-#else
-        Debug.LogWarning("[RKFace] RKFace SDK 仅在 Android 设备上可用！");
 #endif
     }
 
