@@ -38,9 +38,17 @@ public class LoadingPanelController : MonoBehaviour
     [Tooltip("是否启用调试日志")]
     public bool enableDebugLog = true;
 
+    [Header("角色动画控制")]
+    [Tooltip("角色动画管理器引用")]
+    public AnimationManager characterAnimationManager;
+
+    [Tooltip("是否在加载时停止角色动画")]
+    public bool pauseCharacterAnimationOnLoad = true;
+
     // 组件引用
     private CanvasGroup canvasGroup;
     private bool isClosing = false;
+    private bool characterAnimationWasPaused = false;
 
     // 提示文本列表
     private readonly string[] tips = new string[]
@@ -84,6 +92,16 @@ public class LoadingPanelController : MonoBehaviour
         {
             Debug.LogError("LoadingPanelController: 未找到 SDKLoadMonitor，无法监听加载事件");
             return;
+        }
+
+        // 停止角色动画（加载时）
+        if (pauseCharacterAnimationOnLoad && characterAnimationManager != null)
+        {
+            characterAnimationManager.PauseAnimation();
+            characterAnimationWasPaused = true;
+
+            if (enableDebugLog)
+                Debug.Log("LoadingPanelController: 已暂停角色动画");
         }
 
         // 订阅 SDK 加载完成事件
@@ -153,6 +171,15 @@ public class LoadingPanelController : MonoBehaviour
         if (progressBar != null)
         {
             progressBar.value = 1f;
+        }
+
+        // 恢复角色动画
+        if (characterAnimationWasPaused && characterAnimationManager != null)
+        {
+            characterAnimationManager.ResumeAnimation();
+
+            if (enableDebugLog)
+                Debug.Log("LoadingPanelController: 已恢复角色动画");
         }
 
         // 等待一小段时间让用户看到完成状态
