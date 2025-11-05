@@ -154,7 +154,7 @@ public class RKLLMExample : MonoBehaviour
             responseText.text = responseBuilder.ToString();
         }
 
-        Debug.Log($"RKLLMExample: 收到响应 - {result}");
+        LoggerManager.Debug($"收到响应 - {result}", "LLM");
     }
 
     /// <summary>
@@ -167,7 +167,7 @@ public class RKLLMExample : MonoBehaviour
             responseText.text = $"error: {error}";
         }
 
-        Debug.LogError($"RKLLMExample: LLM 错误 - {error}");
+        LoggerManager.Error($"LLM 错误 - {error}", "LLM");
     }
 
     /// <summary>
@@ -175,7 +175,7 @@ public class RKLLMExample : MonoBehaviour
     /// </summary>
     private void OnLLMComplete()
     {
-        Debug.Log("RKLLMExample: LLM 对话完成");
+        LoggerManager.Info("LLM 对话完成", "LLM");
 
         // 如果启用了自动 TTS，将完整的响应内容发送给 TTS
         if (enableAutoTTS && ttsManager != null)
@@ -184,12 +184,12 @@ public class RKLLMExample : MonoBehaviour
 
             if (!string.IsNullOrEmpty(fullResponse))
             {
-                Debug.Log($"RKLLMExample: 发送到 TTS - {fullResponse.Length} 个字符");
+                LoggerManager.Debug($"发送到 TTS - {fullResponse.Length} 个字符", "LLM");
                 ttsManager.Speak(fullResponse);
             }
             else
             {
-                Debug.LogWarning("RKLLMExample: 响应内容为空，跳过 TTS");
+                LoggerManager.Warning("响应内容为空，跳过 TTS", "LLM");
             }
         }
     }
