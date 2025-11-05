@@ -51,11 +51,11 @@ public class UnityMainThreadDispatcher : MonoBehaviour
             mainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
 
             if (enableDebugLog)
-                Debug.Log($"UnityMainThreadDispatcher: 初始化完成 (主线程 ID: {mainThreadId})");
+                LoggerManager.Debug($"初始化完成 (主线程 ID: {mainThreadId})", "Core");
         }
         else if (instance != this)
         {
-            Debug.LogWarning("UnityMainThreadDispatcher: 检测到重复实例，销毁当前对象");
+            LoggerManager.Warning("检测到重复实例，销毁当前对象", "Core");
             Destroy(gameObject);
         }
     }
@@ -65,7 +65,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
         // 主线程安全检查
         if (System.Threading.Thread.CurrentThread.ManagedThreadId != mainThreadId)
         {
-            Debug.LogError("UnityMainThreadDispatcher: Update() 不在主线程执行！");
+            LoggerManager.Error("Update() 不在主线程执行！", "Core");
             return;
         }
 
@@ -85,13 +85,13 @@ public class UnityMainThreadDispatcher : MonoBehaviour
                 catch (Exception e)
                 {
                     totalErrors++;
-                    Debug.LogError($"UnityMainThreadDispatcher: 执行操作时发生错误 - {e.Message}\n{e.StackTrace}");
+                    LoggerManager.Error($"执行操作时发生错误 - {e.Message}\n{e.StackTrace}", "Core");
                 }
             }
 
             if (enableDebugLog && executeCount > 0)
             {
-                Debug.Log($"UnityMainThreadDispatcher: 本帧执行了 {executeCount} 个操作");
+                LoggerManager.Debug($"本帧执行了 {executeCount} 个操作", "Core");
             }
         }
     }
@@ -103,7 +103,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
     {
         if (action == null)
         {
-            Debug.LogWarning("UnityMainThreadDispatcher: 尝试添加空操作到队列");
+            LoggerManager.Warning("尝试添加空操作到队列", "Core");
             return;
         }
 
@@ -112,7 +112,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
             // 检查队列容量
             if (maxQueueSize > 0 && executionQueue.Count >= maxQueueSize)
             {
-                Debug.LogError($"UnityMainThreadDispatcher: 队列已满 (大小: {executionQueue.Count})，无法添加新操作");
+                LoggerManager.Error($"队列已满 (大小: {executionQueue.Count})，无法添加新操作", "Core");
                 return;
             }
 
@@ -123,7 +123,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
             {
                 int threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
                 bool isMainThread = threadId == mainThreadId;
-                Debug.Log($"UnityMainThreadDispatcher: 添加操作到队列 (队列大小: {executionQueue.Count}, 来自{(isMainThread ? "主" : "子")}线程 ID: {threadId})");
+                LoggerManager.Debug($"添加操作到队列 (队列大小: {executionQueue.Count}, 来自{(isMainThread ? "主" : "子")}线程 ID: {threadId})", "Core");
             }
         }
     }
@@ -135,7 +135,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
     {
         if (coroutine == null)
         {
-            Debug.LogWarning("UnityMainThreadDispatcher: 尝试添加空协程到队列");
+            LoggerManager.Warning("尝试添加空协程到队列", "Core");
             return;
         }
 
@@ -147,7 +147,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.LogError($"UnityMainThreadDispatcher: 启动协程时发生错误 - {e.Message}");
+                LoggerManager.Error($"启动协程时发生错误 - {e.Message}", "Core");
             }
         });
     }
@@ -190,7 +190,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
             executionQueue.Clear();
 
             if (enableDebugLog)
-                Debug.Log($"UnityMainThreadDispatcher: 清空队列，移除了 {count} 个操作");
+                LoggerManager.Debug($"清空队列，移除了 {count} 个操作", "Core");
         }
     }
 
@@ -200,7 +200,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
         {
             if (enableDebugLog)
             {
-                Debug.Log($"UnityMainThreadDispatcher: 销毁 (统计信息 - 入队: {totalEnqueued}, 已执行: {totalExecuted}, 错误: {totalErrors})");
+                LoggerManager.Debug($"销毁 (统计信息 - 入队: {totalEnqueued}, 已执行: {totalExecuted}, 错误: {totalErrors})", "Core");
             }
 
             instance = null;

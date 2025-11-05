@@ -11,13 +11,13 @@ public class RKTTSDiagnostic : MonoBehaviour
         #if UNITY_ANDROID && !UNITY_EDITOR
         DiagnoseSDK();
         #else
-        Debug.Log("RKTTSDiagnostic: 仅在 Android 设备上运行诊断");
+        LoggerManager.Debug("仅在 Android 设备上运行诊断", "TTS");
         #endif
     }
 
     private void DiagnoseSDK()
     {
-        Debug.Log("========== RKTTS SDK 诊断开始 ==========");
+        LoggerManager.Info("========== RKTTS SDK 诊断开始 ==========", "TTS");
 
         // 1. 检查 Unity Activity
         try
@@ -27,17 +27,17 @@ public class RKTTSDiagnostic : MonoBehaviour
                 AndroidJavaObject activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
                 if (activity != null)
                 {
-                    Debug.Log("✅ [1/5] Unity Activity 获取成功");
+                    LoggerManager.Info("✅ [1/5] Unity Activity 获取成功", "TTS");
                 }
                 else
                 {
-                    Debug.LogError("❌ [1/5] Unity Activity 为 null");
+                    LoggerManager.Error("❌ [1/5] Unity Activity 为 null", "TTS");
                 }
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ [1/5] 获取 Unity Activity 失败: {e.Message}");
+            LoggerManager.Error($"❌ [1/5] 获取 Unity Activity 失败: {e.Message}", "TTS");
         }
 
         // 2. 检查 RKTTS 主类
@@ -56,34 +56,34 @@ public class RKTTSDiagnostic : MonoBehaviour
 
                 if (ttsInstance != null)
                 {
-                    Debug.Log("✅ [4/5] RKTTS getInstance() 调用成功 (无参数)");
+                    LoggerManager.Info("✅ [4/5] RKTTS getInstance() 调用成功 (无参数)", "TTS");
 
                     // 尝试调用方法
                     try
                     {
                         ttsInstance.Call("initialize");
-                        Debug.Log("   ✅ initialize() 方法调用成功");
+                        LoggerManager.Info("   ✅ initialize() 方法调用成功", "TTS");
                     }
                     catch (System.Exception e)
                     {
-                        Debug.LogError($"   ❌ initialize() 调用失败: {e.Message}");
+                        LoggerManager.Error($"   ❌ initialize() 调用失败: {e.Message}", "TTS");
                     }
                 }
                 else
                 {
-                    Debug.LogError("❌ [4/5] RKTTS getInstance 返回 null");
+                    LoggerManager.Error("❌ [4/5] RKTTS getInstance 返回 null", "TTS");
                 }
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ [4/5] 获取 RKTTS 实例失败: {e.Message}");
+            LoggerManager.Error($"❌ [4/5] 获取 RKTTS 实例失败: {e.Message}", "TTS");
         }
 
         // 5. 检查权限
         CheckPermissions();
 
-        Debug.Log("========== RKTTS SDK 诊断结束 ==========");
+        LoggerManager.Info("========== RKTTS SDK 诊断结束 ==========", "TTS");
     }
 
     private void CheckClass(string className, string description)
@@ -94,23 +94,23 @@ public class RKTTSDiagnostic : MonoBehaviour
             {
                 if (javaClass != null)
                 {
-                    Debug.Log($"✅ {description}: 找到类 {className}");
+                    LoggerManager.Info($"✅ {description}: 找到类 {className}", "TTS");
                 }
                 else
                 {
-                    Debug.LogError($"❌ {description}: 类 {className} 为 null");
+                    LoggerManager.Error($"❌ {description}: 类 {className} 为 null", "TTS");
                 }
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ {description}: 找不到类 {className}\n   错误: {e.Message}");
+            LoggerManager.Error($"❌ {description}: 找不到类 {className}\n   错误: {e.Message}", "TTS");
         }
     }
 
     private void CheckPermissions()
     {
-        Debug.Log("========== [5/5] 权限检查 ==========");
+        LoggerManager.Info("========== [5/5] 权限检查 ==========", "TTS");
 
         #if UNITY_ANDROID && !UNITY_EDITOR
         bool hasStorage = UnityEngine.Android.Permission.HasUserAuthorizedPermission(
@@ -121,19 +121,19 @@ public class RKTTSDiagnostic : MonoBehaviour
         );
 
         if (hasStorage)
-            Debug.Log("   ✅ 存储权限已授予");
+            LoggerManager.Info("   ✅ 存储权限已授予", "TTS");
         else
-            Debug.LogWarning("   ⚠️ 存储权限未授予");
+            LoggerManager.Warning("   ⚠️ 存储权限未授予", "TTS");
 
         if (hasAudio)
-            Debug.Log("   ✅ 音频权限已授予");
+            LoggerManager.Info("   ✅ 音频权限已授予", "TTS");
         else
-            Debug.LogWarning("   ⚠️ 音频权限未授予");
+            LoggerManager.Warning("   ⚠️ 音频权限未授予", "TTS");
 
         if (hasStorage && hasAudio)
-            Debug.Log("✅ [5/5] 所有权限已授予");
+            LoggerManager.Info("✅ [5/5] 所有权限已授予", "TTS");
         else
-            Debug.LogWarning("⚠️ [5/5] 部分权限未授予");
+            LoggerManager.Warning("⚠️ [5/5] 部分权限未授予", "TTS");
         #endif
     }
 }

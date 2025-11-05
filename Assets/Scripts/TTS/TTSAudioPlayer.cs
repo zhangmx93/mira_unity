@@ -61,11 +61,11 @@ public class TTSAudioPlayer : MonoBehaviour
             animationManager = FindObjectOfType<AnimationManager>();
             if (animationManager != null)
             {
-                Debug.Log("TTSAudioPlayer: 已自动找到 AnimationManager");
+                LoggerManager.Debug("已自动找到 AnimationManager", "TTS");
             }
             else
             {
-                Debug.LogWarning("TTSAudioPlayer: 未找到 AnimationManager，说话动画将不可用");
+                LoggerManager.Warning("未找到 AnimationManager，说话动画将不可用", "TTS");
             }
         }
     }
@@ -87,7 +87,7 @@ public class TTSAudioPlayer : MonoBehaviour
         if (data != null && data.Length > 0)
         {
             audioBuffer.AddRange(data);
-            Debug.Log($"TTSAudioPlayer: 添加 {data.Length} 个采样，总计: {audioBuffer.Count}");
+            LoggerManager.Debug($"添加 {data.Length} 个采样，总计: {audioBuffer.Count}", "TTS");
         }
     }
 
@@ -98,7 +98,7 @@ public class TTSAudioPlayer : MonoBehaviour
     {
         if (audioBuffer.Count == 0)
         {
-            Debug.LogWarning("TTSAudioPlayer: 音频缓冲区为空");
+            LoggerManager.Warning("音频缓冲区为空", "TTS");
             return;
         }
 
@@ -124,26 +124,26 @@ public class TTSAudioPlayer : MonoBehaviour
             isPlaying = true;
 
             float duration = (float)audioBuffer.Count / sampleRate;
-            Debug.Log($"TTSAudioPlayer: 播放音频 - 时长: {duration:F2}秒, 采样数: {audioBuffer.Count}, 采样率: {sampleRate}Hz");
+            LoggerManager.Debug($"播放音频 - 时长: {duration:F2}秒, 采样数: {audioBuffer.Count}, 采样率: {sampleRate}Hz", "TTS");
 
             // 启动说话动画
             if (enableTalkAnimation && animationManager != null)
             {
                 animationManager.PlayAnimation(talkAnimationName);
-                Debug.Log($"TTSAudioPlayer: 已启动说话动画 '{talkAnimationName}'");
+                LoggerManager.Debug($"已启动说话动画 '{talkAnimationName}'", "TTS");
             }
 
             // 播放后清空缓冲区，防止下次重复播放
             // 注意：我们在创建 AudioClip 后才清空，因为 SetData 会复制数据
             audioBuffer.Clear();
-            Debug.Log("TTSAudioPlayer: 已清空音频缓冲区");
+            LoggerManager.Debug("已清空音频缓冲区", "TTS");
 
             // 启动协程，在音频播放完成后停止动画
             StartCoroutine(StopTalkAnimationAfterAudio(duration));
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"TTSAudioPlayer: 播放失败 - {e.Message}");
+            LoggerManager.Error($"播放失败 - {e.Message}", "TTS");
             isPlaying = false;
         }
     }
@@ -160,7 +160,7 @@ public class TTSAudioPlayer : MonoBehaviour
         if (enableTalkAnimation && animationManager != null)
         {
             animationManager.PlayAnimation(idleAnimationName);
-            Debug.Log($"TTSAudioPlayer: 已停止说话动画，返回 '{idleAnimationName}'");
+            LoggerManager.Debug($"已停止说话动画，返回 '{idleAnimationName}'", "TTS");
         }
     }
 
@@ -176,7 +176,7 @@ public class TTSAudioPlayer : MonoBehaviour
         if (enableTalkAnimation && animationManager != null)
         {
             animationManager.PlayAnimation(idleAnimationName);
-            Debug.Log($"TTSAudioPlayer: 音频播放完成，已切换到 '{idleAnimationName}' 动画");
+            LoggerManager.Debug($"音频播放完成，已切换到 '{idleAnimationName}' 动画", "TTS");
         }
 
         isPlaying = false;
@@ -188,7 +188,7 @@ public class TTSAudioPlayer : MonoBehaviour
     public void ClearBuffer()
     {
         audioBuffer.Clear();
-        Debug.Log("TTSAudioPlayer: 清空音频缓冲区");
+        LoggerManager.Debug("清空音频缓冲区", "TTS");
     }
 
     /// <summary>
@@ -241,7 +241,7 @@ public class TTSAudioPlayer : MonoBehaviour
     public void SetSampleRate(int rate)
     {
         sampleRate = rate;
-        Debug.Log($"TTSAudioPlayer: 设置采样率为 {sampleRate} Hz");
+        LoggerManager.Debug($"设置采样率为 {sampleRate} Hz", "TTS");
     }
 
     /// <summary>
@@ -263,7 +263,7 @@ public class TTSAudioPlayer : MonoBehaviour
     {
         if (audioBuffer.Count == 0)
         {
-            Debug.LogWarning("TTSAudioPlayer: 无音频数据可保存");
+            LoggerManager.Warning("无音频数据可保存", "TTS");
             return;
         }
 
@@ -272,11 +272,11 @@ public class TTSAudioPlayer : MonoBehaviour
         try
         {
             WAVWriter.WriteWAV(path, audioBuffer.ToArray(), sampleRate, channels);
-            Debug.Log($"TTSAudioPlayer: 音频已保存到 {path}");
+            LoggerManager.Info($"音频已保存到 {path}", "TTS");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"TTSAudioPlayer: 保存音频失败 - {e.Message}");
+            LoggerManager.Error($"保存音频失败 - {e.Message}", "TTS");
         }
     }
 

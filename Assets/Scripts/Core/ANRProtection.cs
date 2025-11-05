@@ -35,7 +35,7 @@ public class ANRProtection : MonoBehaviour
         StartCoroutine(MonitorPerformance());
 
         if (enableDebugLog)
-            Debug.Log("ANRProtection: 已启动性能监控");
+            LoggerManager.Debug("已启动性能监控", "Core");
     }
 
     void Update()
@@ -48,9 +48,9 @@ public class ANRProtection : MonoBehaviour
         // 检测是否有长时间阻塞
         if (enableANRProtection && deltaTime > maxBlockingTime)
         {
-            Debug.LogError($"ANRProtection: ⚠️ 检测到主线程阻塞 {deltaTime:F2} 秒！");
-            Debug.LogError($"  这可能导致 ANR（应用无响应）");
-            Debug.LogError($"  建议检查是否有同步加载或耗时操作在主线程执行");
+            LoggerManager.Error($"⚠️ 检测到主线程阻塞 {deltaTime:F2} 秒！", "Core");
+            LoggerManager.Error($"  这可能导致 ANR（应用无响应）", "Core");
+            LoggerManager.Error($"  建议检查是否有同步加载或耗时操作在主线程执行", "Core");
         }
 
         lastUpdateTime = currentTime;
@@ -74,13 +74,13 @@ public class ANRProtection : MonoBehaviour
             // FPS 警告
             if (fps < fpsThreshold)
             {
-                Debug.LogWarning($"ANRProtection: ⚠️ FPS 过低: {fps:F1} (阈值: {fpsThreshold})");
-                Debug.LogWarning($"  可能原因: SDK 初始化、大量对象加载、GC 等");
+                LoggerManager.Warning($"⚠️ FPS 过低: {fps:F1} (阈值: {fpsThreshold})", "Core");
+                LoggerManager.Warning($"  可能原因: SDK 初始化、大量对象加载、GC 等", "Core");
             }
 
             if (enableDebugLog && fps >= fpsThreshold)
             {
-                Debug.Log($"ANRProtection: FPS = {fps:F1}");
+                LoggerManager.Debug($"FPS = {fps:F1}", "Core");
             }
         }
     }

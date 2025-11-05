@@ -818,6 +818,7 @@ Transform:
   - {fileID: 1025623505}
   - {fileID: 1266386058}
   - {fileID: 47948092}
+  - {fileID: 1014837214}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &321184649
@@ -1389,6 +1390,61 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 985550926}
   m_CullTransparentMesh: 1
+--- !u!1 &1014837213
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1014837214}
+  - component: {fileID: 1014837215}
+  m_Layer: 0
+  m_Name: Logger
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1014837214
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1014837213}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 294615134}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1014837215
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1014837213}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b6aa56c80d2d84d708614aa803f0d6b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableLogging: 1
+  disableInReleaseBuild: 1
+  minimumLogLevel: 1
+  showTimestamp: 1
+  showLogLevel: 1
+  showCategory: 1
+  showStackTrace: 0
+  enabledCategories: []
+  disabledCategories: []
+  useLogPool: 1
+  maxLogCacheSize: 1000
 --- !u!1 &1025623504
 GameObject:
   m_ObjectHideFlags: 0
@@ -2693,6 +2749,8 @@ MonoBehaviour:
   closeDelay: 0.5
   statusUpdateInterval: 0.5
   enableDebugLog: 1
+  characterAnimationManager: {fileID: 0}
+  pauseCharacterAnimationOnLoad: 1
 --- !u!1 &2108684100
 GameObject:
   m_ObjectHideFlags: 0

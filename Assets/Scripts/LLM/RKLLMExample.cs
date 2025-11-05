@@ -43,17 +43,17 @@ public class RKLLMExample : MonoBehaviour
         // 查找 RKLLMManager
         if (rkllmManager == null)
         {
-            Debug.Log("RKLLMExample: 正在查找 RKLLMManager...");
+            LoggerManager.Debug("正在查找 RKLLMManager...", "LLM");
             rkllmManager = FindObjectOfType<RKLLMManager>();
         }
 
         if (rkllmManager != null)
         {
-            Debug.Log($"RKLLMExample: 找到 RKLLMManager - IsInitialized: {rkllmManager.IsInitialized()}");
+            LoggerManager.Info($"找到 RKLLMManager - IsInitialized: {rkllmManager.IsInitialized()}", "LLM");
         }
         else
         {
-            Debug.LogError("RKLLMExample: 未找到 RKLLMManager！请确保场景中有 RKLLMManager 组件");
+            LoggerManager.Error("未找到 RKLLMManager！请确保场景中有 RKLLMManager 组件", "LLM");
         }
 
         // 设置按钮点击事件
@@ -71,7 +71,7 @@ public class RKLLMExample : MonoBehaviour
         }
         else
         {
-            Debug.LogError("RKLLMExample: 未找到 RKLLMManager");
+            LoggerManager.Error("未找到 RKLLMManager", "LLM");
         }
 
         // 查找 TTS 管理器
@@ -80,11 +80,11 @@ public class RKLLMExample : MonoBehaviour
             ttsManager = RKTTSManager.Instance;
             if (ttsManager != null)
             {
-                Debug.Log("RKLLMExample: 找到 RKTTSManager，已启用自动 TTS");
+                LoggerManager.Info("找到 RKTTSManager，已启用自动 TTS", "LLM");
             }
             else
             {
-                Debug.LogWarning("RKLLMExample: 未找到 RKTTSManager，自动 TTS 将被禁用");
+                LoggerManager.Warning("未找到 RKTTSManager，自动 TTS 将被禁用", "LLM");
                 enableAutoTTS = false;
             }
         }
@@ -114,13 +114,13 @@ public class RKLLMExample : MonoBehaviour
     {
         if (inputField == null || string.IsNullOrEmpty(inputField.text))
         {
-            Debug.LogWarning("RKLLMExample: 输入内容为空");
+            LoggerManager.Warning("输入内容为空", "LLM");
             return;
         }
 
         if (rkllmManager == null)
         {
-            Debug.LogError("RKLLMExample: RKLLMManager 未设置");
+            LoggerManager.Error("RKLLMManager 未设置", "LLM");
             return;
         }
 

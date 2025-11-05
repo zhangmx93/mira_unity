@@ -43,31 +43,31 @@ public class RKLLMManager : MonoBehaviour
 
     void Awake()
     {
-        Debug.Log("RKLLMManager: Awake() 被调用");
+        LoggerManager.Debug("Awake() 被调用", "LLM");
 
         if (instance != null && instance != this)
         {
-            Debug.Log("RKLLMManager: 检测到重复实例，销毁当前对象");
+            LoggerManager.Debug("检测到重复实例，销毁当前对象", "LLM");
             Destroy(gameObject);
             return;
         }
         instance = this;
         DontDestroyOnLoad(gameObject);
 
-        Debug.Log("RKLLMManager: 单例设置完成");
+        LoggerManager.Debug("单例设置完成", "LLM");
 
         // 延迟加载模式：初始时禁用，等待 SDKLoader 启用
         enabled = false;
-        Debug.Log("RKLLMManager: 已禁用，等待 SDKLoader 延迟加载");
+        LoggerManager.Debug("已禁用，等待 SDKLoader 延迟加载", "LLM");
     }
 
     void OnEnable()
     {
-        Debug.Log("RKLLMManager: OnEnable() 被调用 - 开始初始化");
+        LoggerManager.Debug("OnEnable() 被调用 - 开始初始化", "LLM");
 
         // 被 SDKLoader 启用时才开始初始化流程
 #if UNITY_ANDROID && !UNITY_EDITOR
-        Debug.Log("RKLLMManager: 检测到 Android 平台，准备初始化...");
+        LoggerManager.Debug("检测到 Android 平台，准备初始化...", "LLM");
 
         // 请求存储权限（SDK需要访问模型文件）
         RequestStoragePermissions();
@@ -76,7 +76,7 @@ public class RKLLMManager : MonoBehaviour
         StartCoroutine(InitializeAfterPermissions());
 #else
         if (enableDebugLog)
-            Debug.LogWarning("RKLLMManager: 当前平台不支持 RKLLM (仅支持 Android)");
+            LoggerManager.Warning("当前平台不支持 RKLLM (仅支持 Android)", "LLM");
 #endif
     }
 
@@ -88,13 +88,13 @@ public class RKLLMManager : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageRead))
         {
-            Debug.Log("RKLLMManager: 请求读取存储权限...");
+            LoggerManager.Debug("请求读取存储权限...", "LLM");
             UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.ExternalStorageRead);
         }
 
         if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageWrite))
         {
-            Debug.Log("RKLLMManager: 请求写入存储权限...");
+            LoggerManager.Debug("请求写入存储权限...", "LLM");
             UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.ExternalStorageWrite);
         }
 #endif
@@ -114,7 +114,7 @@ public class RKLLMManager : MonoBehaviour
         {
             if (UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageRead))
             {
-                Debug.Log("RKLLMManager: 存储权限已授予，开始初始化");
+                LoggerManager.Debug("存储权限已授予，开始初始化", "LLM");
                 InitializeRKLLM();
                 yield break;
             }
@@ -124,7 +124,7 @@ public class RKLLMManager : MonoBehaviour
         }
 
         // 超时或用户拒绝权限
-        Debug.LogWarning("RKLLMManager: 未获得存储权限，尝试继续初始化（可能失败）");
+        LoggerManager.Warning("未获得存储权限，尝试继续初始化（可能失败）", "LLM");
         InitializeRKLLM();
 #endif
         yield return null;
@@ -139,11 +139,11 @@ public class RKLLMManager : MonoBehaviour
         try
         {
             if (enableDebugLog)
-                Debug.Log("RKLLMManager: 开始初始化 RKLLM...");
+                LoggerManager.Debug("开始初始化 RKLLM...", "LLM");
 
             // 步骤 1: 获取 Unity Activity
             if (enableDebugLog)
-                Debug.Log("RKLLMManager: [1/6] 获取 Unity Activity...");
+                LoggerManager.Debug("[1/4] 获取 Unity Activity...", "LLM");
 
             using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
             {
@@ -152,35 +152,35 @@ public class RKLLMManager : MonoBehaviour
 
             if (unityActivity == null)
             {
-                Debug.LogError("RKLLMManager: 无法获取 Unity Activity");
+                LoggerManager.Error("无法获取 Unity Activity", "LLM");
                 return;
             }
 
             if (enableDebugLog)
-                Debug.Log("RKLLMManager: [1/4] ✅ Unity Activity 获取成功");
+                LoggerManager.Debug("[1/4] ✅ Unity Activity 获取成功", "LLM");
 
             // 步骤 2: 创建 SenseRKLlmDetector 实例
             if (enableDebugLog)
-                Debug.Log("RKLLMManager: [2/4] 创建 SenseRKLlmDetector 实例...");
+                LoggerManager.Debug("[2/4] 创建 SenseRKLlmDetector 实例...", "LLM");
 
             AndroidJavaObject application = unityActivity.Call<AndroidJavaObject>("getApplication");
             rkllmDetector = new AndroidJavaObject("com.senseflow.rkllm.SenseRKLlmDetector", application);
 
             if (enableDebugLog)
-                Debug.Log("RKLLMManager: [2/4] ✅ SenseRKLlmDetector 实例创建成功");
+                LoggerManager.Debug("[2/4] ✅ SenseRKLlmDetector 实例创建成功", "LLM");
 
             // 步骤 3: 设置结果监听器
             if (enableDebugLog)
-                Debug.Log("RKLLMManager: [3/4] 设置结果监听器...");
+                LoggerManager.Debug("[3/4] 设置结果监听器...", "LLM");
 
             rkllmDetector.Call("setOnResultListener", new RKLLMResultListener(this));
 
             if (enableDebugLog)
-                Debug.Log("RKLLMManager: [3/4] ✅ 结果监听器设置成功");
+                LoggerManager.Debug("[3/4] ✅ 结果监听器设置成功", "LLM");
 
             // 步骤 4: 初始化并启动检测器
             if (enableDebugLog)
-                Debug.Log("RKLLMManager: [4/4] 初始化并启动检测器...");
+                LoggerManager.Debug("[4/4] 初始化并启动检测器...", "LLM");
 
             rkllmDetector.Call("initialize");
             rkllmDetector.Call("start");
@@ -188,11 +188,11 @@ public class RKLLMManager : MonoBehaviour
             isInitialized = true;
 
             if (enableDebugLog)
-                Debug.Log("RKLLMManager: ✅ RKLLM 初始化完成");
+                LoggerManager.Info("✅ RKLLM 初始化完成", "LLM");
         }
         catch (Exception e)
         {
-            Debug.LogError($"RKLLMManager: 初始化失败 - {e.Message}\n{e.StackTrace}");
+            LoggerManager.Error($"初始化失败 - {e.Message}\n{e.StackTrace}", "LLM");
             OnLLMError?.Invoke($"初始化失败: {e.Message}");
             isInitialized = false;
         }
@@ -209,21 +209,21 @@ public class RKLLMManager : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!isInitialized)
         {
-            Debug.LogError("RKLLMManager: RKLLM 未初始化");
+            LoggerManager.Error("RKLLM 未初始化", "LLM");
             OnLLMError?.Invoke("RKLLM 未初始化");
             return;
         }
 
         if (string.IsNullOrEmpty(message))
         {
-            Debug.LogWarning("RKLLMManager: 消息不能为空");
+            LoggerManager.Warning("消息不能为空", "LLM");
             return;
         }
 
         try
         {
             if (enableDebugLog)
-                Debug.Log($"RKLLMManager: 发送消息 - {message}");
+                LoggerManager.Debug($"发送消息 - {message}", "LLM");
 
             if (texture != null)
             {
@@ -233,13 +233,13 @@ public class RKLLMManager : MonoBehaviour
                 if (bitmap != null)
                 {
                     if (enableDebugLog)
-                        Debug.Log("RKLLMManager: 调用 chat 方法（带图片）");
+                        LoggerManager.Debug("调用 chat 方法（带图片）", "LLM");
                     rkllmDetector.Call("chat", message, bitmap);
                     bitmap.Dispose();
                 }
                 else
                 {
-                    Debug.LogError("RKLLMManager: 图片转换失败");
+                    LoggerManager.Error("图片转换失败", "LLM");
                     OnLLMError?.Invoke("图片转换失败");
                 }
             }
@@ -250,11 +250,11 @@ public class RKLLMManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"RKLLMManager: 发送消息失败 - {e.Message}");
+            LoggerManager.Error($"发送消息失败 - {e.Message}", "LLM");
             OnLLMError?.Invoke($"发送消息失败: {e.Message}");
         }
 #else
-        Debug.LogWarning($"RKLLMManager: [模拟] 发送消息 - {message}");
+        LoggerManager.Warning($"[模拟] 发送消息 - {message}", "LLM");
         // 编辑器模式下的模拟响应
         StartCoroutine(SimulateResponse(message));
 #endif
@@ -268,7 +268,7 @@ public class RKLLMManager : MonoBehaviour
     {
         if (cameraCapture == null)
         {
-            Debug.LogError("RKLLMManager: CameraCapture 未设置");
+            LoggerManager.Error("CameraCapture 未设置", "LLM");
             OnLLMError?.Invoke("CameraCapture 未设置");
             return;
         }
@@ -276,7 +276,7 @@ public class RKLLMManager : MonoBehaviour
         Texture2D currentFrame = cameraCapture.GetCurrentFrame();
         if (currentFrame == null)
         {
-            Debug.LogWarning("RKLLMManager: 无法获取当前摄像头画面");
+            LoggerManager.Warning("无法获取当前摄像头画面", "LLM");
             OnLLMError?.Invoke("无法获取当前摄像头画面");
             return;
         }
@@ -295,7 +295,7 @@ public class RKLLMManager : MonoBehaviour
             // 确保纹理可读
             if (!texture.isReadable)
             {
-                Debug.LogError("RKLLMManager: 纹理不可读，请在 Import Settings 中启用 Read/Write");
+                LoggerManager.Error("纹理不可读，请在 Import Settings 中启用 Read/Write", "LLM");
                 return null;
             }
 
@@ -333,7 +333,7 @@ public class RKLLMManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"RKLLMManager: Texture2D 转 Bitmap 失败 - {e.Message}");
+            LoggerManager.Error($"Texture2D 转 Bitmap 失败 - {e.Message}", "LLM");
             return null;
         }
 #else
@@ -360,7 +360,7 @@ public class RKLLMManager : MonoBehaviour
         if (callState == 2)
         {
             if (enableDebugLog)
-                Debug.Log("RKLLMManager: 对话结束");
+                LoggerManager.Debug("对话结束", "LLM");
 
             // 触发对话完成事件
             OnLLMComplete?.Invoke();
@@ -370,7 +370,7 @@ public class RKLLMManager : MonoBehaviour
         if (!string.IsNullOrEmpty(result))
         {
             if (enableDebugLog)
-                Debug.Log($"RKLLMManager: 收到结果 - {result}");
+                LoggerManager.Debug($"收到结果 - {result}", "LLM");
 
             OnLLMResult?.Invoke(result);
         }
@@ -388,7 +388,7 @@ public class RKLLMManager : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.LogError($"RKLLMManager: 销毁时出错 - {e.Message}");
+                LoggerManager.Error($"销毁时出错 - {e.Message}", "LLM");
             }
         }
 #endif

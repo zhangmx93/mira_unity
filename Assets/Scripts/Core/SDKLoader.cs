@@ -34,7 +34,7 @@ public class SDKLoader : MonoBehaviour
     void Start()
     {
         if (enableDebugLog)
-            Debug.Log("SDKLoader: 准备开始加载 SDK...");
+            LoggerManager.Info("准备开始加载 SDK...", "SDKLoader");
 
         // 查找 SDK 管理器
         FindSDKManagers();
@@ -55,11 +55,11 @@ public class SDKLoader : MonoBehaviour
             if (llmManager != null)
             {
                 if (enableDebugLog)
-                    Debug.Log("SDKLoader: ✅ 找到 RKLLMManager");
+                    LoggerManager.Info("✅ 找到 RKLLMManager", "SDKLoader");
             }
             else
             {
-                Debug.LogWarning("SDKLoader: ⚠️ 未找到 RKLLMManager");
+                LoggerManager.Warning("⚠️ 未找到 RKLLMManager", "SDKLoader");
             }
         }
 
@@ -70,11 +70,11 @@ public class SDKLoader : MonoBehaviour
             if (ttsManager != null)
             {
                 if (enableDebugLog)
-                    Debug.Log("SDKLoader: ✅ 找到 RKTTSManager");
+                    LoggerManager.Info("✅ 找到 RKTTSManager", "SDKLoader");
             }
             else
             {
-                Debug.LogWarning("SDKLoader: ⚠️ 未找到 RKTTSManager");
+                LoggerManager.Warning("⚠️ 未找到 RKTTSManager", "SDKLoader");
             }
         }
 
@@ -85,11 +85,11 @@ public class SDKLoader : MonoBehaviour
             if (faceManager != null)
             {
                 if (enableDebugLog)
-                    Debug.Log("SDKLoader: ✅ 找到 RKFaceManager");
+                    LoggerManager.Info("✅ 找到 RKFaceManager", "SDKLoader");
             }
             else
             {
-                Debug.LogWarning("SDKLoader: ⚠️ 未找到 RKFaceManager（可选）");
+                LoggerManager.Warning("⚠️ 未找到 RKFaceManager（可选）", "SDKLoader");
             }
         }
     }
@@ -103,13 +103,13 @@ public class SDKLoader : MonoBehaviour
 
         // 初始延迟 - 等待 Unity 完成基础初始化
         if (enableDebugLog)
-            Debug.Log($"SDKLoader: 等待 {initialDelay} 秒后开始加载...");
+            LoggerManager.Info($"等待 {initialDelay} 秒后开始加载...", "SDKLoader");
 
         yield return new WaitForSeconds(initialDelay);
 
         // === 第一步：加载 RKLLM ===
         if (enableDebugLog)
-            Debug.Log("SDKLoader: [1/3] 正在加载 RKLLM...");
+            LoggerManager.Info("[1/3] 正在加载 RKLLM...", "SDKLoader");
 
         if (llmManager != null)
         {
@@ -117,7 +117,7 @@ public class SDKLoader : MonoBehaviour
             llmManager.enabled = true;
 
             if (enableDebugLog)
-                Debug.Log("SDKLoader: ✅ RKLLM 已启用，正在后台初始化");
+                LoggerManager.Info("✅ RKLLM 已启用，正在后台初始化", "SDKLoader");
 
             // 分帧加载，避免阻塞主线程
             yield return null;
@@ -126,18 +126,18 @@ public class SDKLoader : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("SDKLoader: ⚠️ 跳过 RKLLM（未找到管理器）");
+            LoggerManager.Warning("⚠️ 跳过 RKLLM（未找到管理器）", "SDKLoader");
         }
 
         // 延迟一段时间再加载下一个 SDK
         if (enableDebugLog)
-            Debug.Log($"SDKLoader: 等待 {delayBetweenSDKs} 秒...");
+            LoggerManager.Info($"等待 {delayBetweenSDKs} 秒...", "SDKLoader");
 
         yield return new WaitForSeconds(delayBetweenSDKs);
 
         // === 第二步：加载 RKTTS ===
         if (enableDebugLog)
-            Debug.Log("SDKLoader: [2/3] 正在加载 RKTTS...");
+            LoggerManager.Info("[2/3] 正在加载 RKTTS...", "SDKLoader");
 
         if (ttsManager != null)
         {
@@ -145,7 +145,7 @@ public class SDKLoader : MonoBehaviour
             ttsManager.enabled = true;
 
             if (enableDebugLog)
-                Debug.Log("SDKLoader: ✅ RKTTS 已启用，正在后台初始化");
+                LoggerManager.Info("✅ RKTTS 已启用，正在后台初始化", "SDKLoader");
 
             // 分帧加载，避免阻塞主线程
             yield return null;
@@ -154,21 +154,21 @@ public class SDKLoader : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("SDKLoader: ⚠️ 跳过 RKTTS（未找到管理器）");
+            LoggerManager.Warning("⚠️ 跳过 RKTTS（未找到管理器）", "SDKLoader");
         }
 
         // 延迟一段时间再加载下一个 SDK
         if (faceManager != null)
         {
             if (enableDebugLog)
-                Debug.Log($"SDKLoader: 等待 {delayBetweenSDKs} 秒...");
+                LoggerManager.Info($"等待 {delayBetweenSDKs} 秒...", "SDKLoader");
 
             yield return new WaitForSeconds(delayBetweenSDKs);
         }
 
         // === 第三步：加载 RKFace（可选）===
         if (enableDebugLog)
-            Debug.Log("SDKLoader: [3/3] 正在加载 RKFace...");
+            LoggerManager.Info("[3/3] 正在加载 RKFace...", "SDKLoader");
 
         if (faceManager != null)
         {
@@ -176,7 +176,7 @@ public class SDKLoader : MonoBehaviour
             faceManager.enabled = true;
 
             if (enableDebugLog)
-                Debug.Log("SDKLoader: ✅ RKFace 已启用，正在后台初始化");
+                LoggerManager.Info("✅ RKFace 已启用，正在后台初始化", "SDKLoader");
 
             // 分帧加载，避免阻塞主线程
             yield return null;
@@ -186,7 +186,7 @@ public class SDKLoader : MonoBehaviour
         else
         {
             if (enableDebugLog)
-                Debug.Log("SDKLoader: ⚠️ 跳过 RKFace（未找到管理器，这是可选的）");
+                LoggerManager.Debug("⚠️ 跳过 RKFace（未找到管理器，这是可选的）", "SDKLoader");
         }
 
         // 完成
@@ -195,11 +195,11 @@ public class SDKLoader : MonoBehaviour
 
         if (enableDebugLog)
         {
-            Debug.Log("SDKLoader: ==========================================");
-            Debug.Log("SDKLoader: ✅ SDK 加载流程完成");
-            Debug.Log("SDKLoader: 注意：SDK 仍在后台初始化（权限、模型加载等）");
-            Debug.Log("SDKLoader: 请查看各 Manager 的日志了解初始化进度");
-            Debug.Log("SDKLoader: ==========================================");
+            LoggerManager.Info("==========================================", "SDKLoader");
+            LoggerManager.Info("✅ SDK 加载流程完成", "SDKLoader");
+            LoggerManager.Info("注意：SDK 仍在后台初始化（权限、模型加载等）", "SDKLoader");
+            LoggerManager.Info("请查看各 Manager 的日志了解初始化进度", "SDKLoader");
+            LoggerManager.Info("==========================================", "SDKLoader");
         }
     }
 
@@ -285,12 +285,12 @@ public class SDKLoader : MonoBehaviour
     {
         if (isLoading)
         {
-            Debug.LogWarning("SDKLoader: 正在加载中，无法重新加载");
+            LoggerManager.Warning("正在加载中，无法重新加载", "SDKLoader");
             return;
         }
 
         if (enableDebugLog)
-            Debug.Log("SDKLoader: 手动重新加载 SDK");
+            LoggerManager.Info("手动重新加载 SDK", "SDKLoader");
 
         // 禁用所有 SDK
         if (llmManager != null) llmManager.enabled = false;

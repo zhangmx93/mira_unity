@@ -54,7 +54,7 @@ public class TTSClickTest : MonoBehaviour
 
             if (ttsManager == null)
             {
-                Debug.LogError("TTSClickTest: 未找到 RKTTSManager！");
+                LoggerManager.Error("未找到 RKTTSManager！", "TTS");
                 if (statusText != null)
                     statusText.text = "错误: 未找到 TTS 管理器";
                 return;
@@ -78,7 +78,7 @@ public class TTSClickTest : MonoBehaviour
         }
 
         if (enableDebugLog)
-            Debug.Log("TTSClickTest: 初始化完成，点击屏幕播放随机对话");
+            LoggerManager.Debug("初始化完成，点击屏幕播放随机对话", "TTS");
     }
 
     void Update()
@@ -117,13 +117,13 @@ public class TTSClickTest : MonoBehaviour
     {
         if (ttsManager == null)
         {
-            Debug.LogError("TTSClickTest: TTS 管理器未设置");
+            LoggerManager.Error("TTS 管理器未设置", "TTS");
             return;
         }
 
         if (!ttsManager.IsInitialized())
         {
-            Debug.LogWarning("TTSClickTest: TTS 尚未初始化完成，请稍候");
+            LoggerManager.Warning("TTS 尚未初始化完成，请稍候", "TTS");
             if (statusText != null)
                 statusText.text = "TTS 正在初始化，请稍候...";
             return;
@@ -131,7 +131,7 @@ public class TTSClickTest : MonoBehaviour
 
         if (testDialogues == null || testDialogues.Length == 0)
         {
-            Debug.LogError("TTSClickTest: 测试对话列表为空");
+            LoggerManager.Error("测试对话列表为空", "TTS");
             return;
         }
 
@@ -142,7 +142,7 @@ public class TTSClickTest : MonoBehaviour
         clickCount++;
 
         if (enableDebugLog)
-            Debug.Log($"TTSClickTest: [{clickCount}] 播放随机对话 (索引 {randomIndex}): {dialogue}");
+            LoggerManager.Debug($"[{clickCount}] 播放随机对话 (索引 {randomIndex}): {dialogue}", "TTS");
 
         // 播放 TTS
         ttsManager.Speak(dialogue);
@@ -160,7 +160,7 @@ public class TTSClickTest : MonoBehaviour
     void OnTTSStarted()
     {
         if (enableDebugLog)
-            Debug.Log("TTSClickTest: TTS 开始");
+            LoggerManager.Debug("TTS 开始", "TTS");
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ public class TTSClickTest : MonoBehaviour
     void OnTTSFinished()
     {
         if (enableDebugLog)
-            Debug.Log("TTSClickTest: TTS 完成");
+            LoggerManager.Debug("TTS 完成", "TTS");
 
         if (statusText != null)
         {
@@ -182,7 +182,7 @@ public class TTSClickTest : MonoBehaviour
     /// </summary>
     void OnTTSError(string error)
     {
-        Debug.LogError($"TTSClickTest: TTS 错误 - {error}");
+        LoggerManager.Error($"TTS 错误 - {error}", "TTS");
 
         if (statusText != null)
         {
@@ -226,7 +226,7 @@ public class TTSClickTest : MonoBehaviour
             }
 
             if (enableDebugLog)
-                Debug.Log("TTSClickTest: 停止 TTS");
+                LoggerManager.Debug("停止 TTS", "TTS");
         }
     }
 
@@ -237,14 +237,14 @@ public class TTSClickTest : MonoBehaviour
     {
         if (testDialogues == null || index < 0 || index >= testDialogues.Length)
         {
-            Debug.LogError($"TTSClickTest: 无效的对话索引 {index}");
+            LoggerManager.Error($"无效的对话索引 {index}", "TTS");
             return;
         }
 
         string dialogue = testDialogues[index];
 
         if (enableDebugLog)
-            Debug.Log($"TTSClickTest: 播放对话 [{index}]: {dialogue}");
+            LoggerManager.Debug($"播放对话 [{index}]: {dialogue}", "TTS");
 
         if (ttsManager != null)
         {

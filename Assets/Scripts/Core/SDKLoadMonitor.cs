@@ -69,7 +69,7 @@ public class SDKLoadMonitor : MonoBehaviour
     {
         if (instance != null && instance != this)
         {
-            Debug.LogWarning("SDKLoadMonitor: 检测到重复实例，销毁当前对象");
+            LoggerManager.Warning("检测到重复实例，销毁当前对象", "SDKMonitor");
             Destroy(gameObject);
             return;
         }
@@ -78,7 +78,7 @@ public class SDKLoadMonitor : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         if (enableDebugLog)
-            Debug.Log("SDKLoadMonitor: 初始化完成");
+            LoggerManager.Info("初始化完成", "SDKMonitor");
     }
 
     void Start()
@@ -117,11 +117,11 @@ public class SDKLoadMonitor : MonoBehaviour
 
         if (enableDebugLog)
         {
-            Debug.Log($"SDKLoadMonitor: 找到的 SDK 管理器:");
-            Debug.Log($"  - LLM: {(llmManager != null ? "✅" : "❌")}");
-            Debug.Log($"  - TTS: {(ttsManager != null ? "✅" : "❌")}");
-            Debug.Log($"  - Face: {(faceManager != null ? "✅" : "❌")}");
-            Debug.Log($"  - Loader: {(sdkLoader != null ? "✅" : "❌")}");
+            LoggerManager.Info($"找到的 SDK 管理器:", "SDKMonitor");
+            LoggerManager.Info($"  - LLM: {(llmManager != null ? "✅" : "❌")}", "SDKMonitor");
+            LoggerManager.Info($"  - TTS: {(ttsManager != null ? "✅" : "❌")}", "SDKMonitor");
+            LoggerManager.Info($"  - Face: {(faceManager != null ? "✅" : "❌")}", "SDKMonitor");
+            LoggerManager.Info($"  - Loader: {(sdkLoader != null ? "✅" : "❌")}", "SDKMonitor");
         }
     }
 
@@ -132,12 +132,12 @@ public class SDKLoadMonitor : MonoBehaviour
     {
         if (isMonitoring)
         {
-            Debug.LogWarning("SDKLoadMonitor: 已经在监控中");
+            LoggerManager.Warning("已经在监控中", "SDKMonitor");
             return;
         }
 
         if (enableDebugLog)
-            Debug.Log("SDKLoadMonitor: 开始监控 SDK 加载状态...");
+            LoggerManager.Info("开始监控 SDK 加载状态...", "SDKMonitor");
 
         isMonitoring = true;
         monitoringStartTime = Time.time;
@@ -158,7 +158,7 @@ public class SDKLoadMonitor : MonoBehaviour
             if (elapsedTime > maxWaitTime)
             {
                 string failedSDKs = GetFailedSDKsList();
-                Debug.LogError($"SDKLoadMonitor: SDK 加载超时！未就绪的 SDK: {failedSDKs}");
+                LoggerManager.Error($"SDK 加载超时！未就绪的 SDK: {failedSDKs}", "SDKMonitor");
                 OnSDKLoadFailed?.Invoke($"SDK 加载超时: {failedSDKs}");
                 isMonitoring = false;
                 yield break;
@@ -176,17 +176,17 @@ public class SDKLoadMonitor : MonoBehaviour
 
                 if (enableDebugLog)
                 {
-                    Debug.Log("========================================");
-                    Debug.Log("SDKLoadMonitor: ✅ 所有 SDK 已就绪！");
-                    Debug.Log($"SDKLoadMonitor: 总耗时: {elapsedTime:F2} 秒");
-                    Debug.Log("========================================");
+                    LoggerManager.Info("========================================", "SDKMonitor");
+                    LoggerManager.Info("✅ 所有 SDK 已就绪！", "SDKMonitor");
+                    LoggerManager.Info($"总耗时: {elapsedTime:F2} 秒", "SDKMonitor");
+                    LoggerManager.Info("========================================", "SDKMonitor");
                 }
 
                 // 自动关闭加载面板
                 if (autoCloseLoadingPanel && loadingPanel != null)
                 {
                     if (enableDebugLog)
-                        Debug.Log("SDKLoadMonitor: 自动关闭加载面板");
+                        LoggerManager.Info("自动关闭加载面板", "SDKMonitor");
 
                     loadingPanel.SetActive(false);
                 }
@@ -222,13 +222,13 @@ public class SDKLoadMonitor : MonoBehaviour
         if (enableDebugLog)
         {
             if (isLLMReady && !prevLLMReady)
-                Debug.Log("SDKLoadMonitor: ✅ RKLLM 已就绪");
+                LoggerManager.Info("✅ RKLLM 已就绪", "SDKMonitor");
 
             if (isTTSReady && !prevTTSReady)
-                Debug.Log("SDKLoadMonitor: ✅ RKTTS 已就绪");
+                LoggerManager.Info("✅ RKTTS 已就绪", "SDKMonitor");
 
             if (isFaceReady && !prevFaceReady)
-                Debug.Log("SDKLoadMonitor: ✅ RKFace 已就绪");
+                LoggerManager.Info("✅ RKFace 已就绪", "SDKMonitor");
         }
     }
 
@@ -313,7 +313,7 @@ public class SDKLoadMonitor : MonoBehaviour
         if (!isLLMReady)
         {
             string error = "RKLLM 未就绪，无法执行操作";
-            Debug.LogWarning($"SDKLoadMonitor: {error}");
+            LoggerManager.Warning(error, "SDKMonitor");
             onError?.Invoke(error);
             return;
         }
@@ -321,7 +321,7 @@ public class SDKLoadMonitor : MonoBehaviour
         if (operationsLocked)
         {
             string error = "SDK 正在加载中，请稍候";
-            Debug.LogWarning($"SDKLoadMonitor: {error}");
+            LoggerManager.Warning(error, "SDKMonitor");
             onError?.Invoke(error);
             return;
         }
@@ -332,7 +332,7 @@ public class SDKLoadMonitor : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"SDKLoadMonitor: LLM 操作执行失败 - {e.Message}");
+            LoggerManager.Error($"LLM 操作执行失败 - {e.Message}", "SDKMonitor");
             onError?.Invoke(e.Message);
         }
     }
@@ -345,7 +345,7 @@ public class SDKLoadMonitor : MonoBehaviour
         if (!isTTSReady)
         {
             string error = "RKTTS 未就绪，无法执行操作";
-            Debug.LogWarning($"SDKLoadMonitor: {error}");
+            LoggerManager.Warning(error, "SDKMonitor");
             onError?.Invoke(error);
             return;
         }
@@ -353,7 +353,7 @@ public class SDKLoadMonitor : MonoBehaviour
         if (operationsLocked)
         {
             string error = "SDK 正在加载中，请稍候";
-            Debug.LogWarning($"SDKLoadMonitor: {error}");
+            LoggerManager.Warning(error, "SDKMonitor");
             onError?.Invoke(error);
             return;
         }
@@ -364,7 +364,7 @@ public class SDKLoadMonitor : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"SDKLoadMonitor: TTS 操作执行失败 - {e.Message}");
+            LoggerManager.Error($"TTS 操作执行失败 - {e.Message}", "SDKMonitor");
             onError?.Invoke(e.Message);
         }
     }
@@ -377,7 +377,7 @@ public class SDKLoadMonitor : MonoBehaviour
         if (!isFaceReady)
         {
             string error = "RKFace 未就绪，无法执行操作";
-            Debug.LogWarning($"SDKLoadMonitor: {error}");
+            LoggerManager.Warning(error, "SDKMonitor");
             onError?.Invoke(error);
             return;
         }
@@ -385,7 +385,7 @@ public class SDKLoadMonitor : MonoBehaviour
         if (operationsLocked)
         {
             string error = "SDK 正在加载中，请稍候";
-            Debug.LogWarning($"SDKLoadMonitor: {error}");
+            LoggerManager.Warning(error, "SDKMonitor");
             onError?.Invoke(error);
             return;
         }
@@ -396,7 +396,7 @@ public class SDKLoadMonitor : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"SDKLoadMonitor: Face 操作执行失败 - {e.Message}");
+            LoggerManager.Error($"Face 操作执行失败 - {e.Message}", "SDKMonitor");
             onError?.Invoke(e.Message);
         }
     }
@@ -415,7 +415,7 @@ public class SDKLoadMonitor : MonoBehaviour
     public void ResetAllSDKs()
     {
         if (enableDebugLog)
-            Debug.Log("SDKLoadMonitor: 重置所有 SDK 状态");
+            LoggerManager.Info("重置所有 SDK 状态", "SDKMonitor");
 
         isLLMReady = false;
         isTTSReady = false;

@@ -53,11 +53,11 @@ public class RKTTSManager : MonoBehaviour
 
     void Awake()
     {
-        Debug.Log("RKTTSManager: Awake() 被调用");
+        LoggerManager.Debug("Awake() 被调用", "TTS");
 
         if (instance != null && instance != this)
         {
-            Debug.Log("RKTTSManager: 检测到重复实例，销毁当前对象");
+            LoggerManager.Debug("检测到重复实例，销毁当前对象", "TTS");
             Destroy(gameObject);
             return;
         }
@@ -71,7 +71,7 @@ public class RKTTSManager : MonoBehaviour
             if (audioPlayer == null)
             {
                 audioPlayer = gameObject.AddComponent<TTSAudioPlayer>();
-                Debug.Log("RKTTSManager: 已自动添加 TTSAudioPlayer 组件");
+                LoggerManager.Debug("已自动添加 TTSAudioPlayer 组件", "TTS");
             }
         }
 
@@ -85,34 +85,34 @@ public class RKTTSManager : MonoBehaviour
         // 尝试设置 Unity 音频配置为 44100 Hz
         TrySetupAudioConfiguration();
 
-        Debug.Log("RKTTSManager: 单例设置完成");
+        LoggerManager.Debug("单例设置完成", "TTS");
 
         // 延迟加载模式：初始时禁用，等待 SDKLoader 启用
         enabled = false;
-        Debug.Log("RKTTSManager: 已禁用，等待 SDKLoader 延迟加载");
+        LoggerManager.Debug("已禁用，等待 SDKLoader 延迟加载", "TTS");
     }
 
     void OnEnable()
     {
-        Debug.Log("RKTTSManager: OnEnable() 被调用 - 开始初始化");
+        LoggerManager.Debug("OnEnable() 被调用 - 开始初始化", "TTS");
 
         // 确保采样率设置正确（防止 Inspector 中被修改）
         if (sampleRate != 44100)
         {
-            Debug.LogWarning($"RKTTSManager: ⚠️ 采样率不是 44100 Hz (当前: {sampleRate})，正在修复...");
+            LoggerManager.Warning($"⚠️ 采样率不是 44100 Hz (当前: {sampleRate})，正在修复...", "TTS");
             sampleRate = 44100;
         }
 
         // 确保 audioPlayer 采样率正确
         if (audioPlayer != null && audioPlayer.sampleRate != 44100)
         {
-            Debug.LogWarning($"RKTTSManager: ⚠️ AudioPlayer 采样率不是 44100 Hz (当前: {audioPlayer.sampleRate})，正在修复...");
+            LoggerManager.Warning($"⚠️ AudioPlayer 采样率不是 44100 Hz (当前: {audioPlayer.sampleRate})，正在修复...", "TTS");
             audioPlayer.sampleRate = 44100;
         }
 
         // 被 SDKLoader 启用时才开始初始化
 #if UNITY_ANDROID && !UNITY_EDITOR
-        Debug.Log("RKTTSManager: 检测到 Android 平台，准备初始化...");
+        LoggerManager.Debug("检测到 Android 平台，准备初始化...", "TTS");
 
         // 请求音频录制权限（虽然 TTS 不需要录音，但参考示例中有此权限）
         RequestAudioPermissions();
@@ -124,7 +124,7 @@ public class RKTTSManager : MonoBehaviour
         StartCoroutine(InitializeAfterPermissions());
 #else
         if (enableDebugLog)
-            Debug.LogWarning("RKTTSManager: 当前平台不支持 RKTTS (仅支持 Android)");
+            LoggerManager.Warning("当前平台不支持 RKTTS (仅支持 Android)", "TTS");
 #endif
     }
 
@@ -137,17 +137,17 @@ public class RKTTSManager : MonoBehaviour
         {
             AudioConfiguration config = AudioSettings.GetConfiguration();
 
-            Debug.Log($"RKTTSManager: 当前 Unity 音频配置:");
-            Debug.Log($"  Sample Rate: {config.sampleRate} Hz");
-            Debug.Log($"  Output Sample Rate: {AudioSettings.outputSampleRate} Hz");
-            Debug.Log($"  DSP Buffer Size: {config.dspBufferSize}");
+            LoggerManager.Debug($"当前 Unity 音频配置:", "TTS");
+            LoggerManager.Debug($"  Sample Rate: {config.sampleRate} Hz", "TTS");
+            LoggerManager.Debug($"  Output Sample Rate: {AudioSettings.outputSampleRate} Hz", "TTS");
+            LoggerManager.Debug($"  DSP Buffer Size: {config.dspBufferSize}", "TTS");
 
             // 如果采样率不是 44100，尝试更改
             if (config.sampleRate != 44100 && AudioSettings.outputSampleRate != 44100)
             {
-                Debug.LogWarning($"RKTTSManager: 音频采样率不是 44100 Hz");
-                Debug.LogWarning($"  当前: {config.sampleRate} Hz");
-                Debug.LogWarning($"  期望: 44100 Hz");
+                LoggerManager.Warning($"音频采样率不是 44100 Hz", "TTS");
+                LoggerManager.Warning($"  当前: {config.sampleRate} Hz", "TTS");
+                LoggerManager.Warning($"  期望: 44100 Hz", "TTS");
 
                 // Android 平台尝试更改可能无效
                 config.sampleRate = 44100;
@@ -155,23 +155,23 @@ public class RKTTSManager : MonoBehaviour
 
                 if (success)
                 {
-                    Debug.Log($"RKTTSManager: ✅ 已尝试更新音频采样率");
-                    Debug.Log($"  新的 Output Sample Rate: {AudioSettings.outputSampleRate} Hz");
+                    LoggerManager.Info($"✅ 已尝试更新音频采样率", "TTS");
+                    LoggerManager.Info($"  新的 Output Sample Rate: {AudioSettings.outputSampleRate} Hz", "TTS");
                 }
                 else
                 {
-                    Debug.LogWarning($"RKTTSManager: ❌ 无法更改音频采样率");
-                    Debug.LogWarning($"  TTSAudioPlayer 会自动处理采样率转换");
+                    LoggerManager.Warning($"❌ 无法更改音频采样率", "TTS");
+                    LoggerManager.Warning($"  TTSAudioPlayer 会自动处理采样率转换", "TTS");
                 }
             }
             else
             {
-                Debug.Log($"RKTTSManager: ✅ 音频采样率已是 44100 Hz");
+                LoggerManager.Debug($"✅ 音频采样率已是 44100 Hz", "TTS");
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"RKTTSManager: 设置音频配置失败: {e.Message}");
+            LoggerManager.Error($"设置音频配置失败: {e.Message}", "TTS");
         }
     }
 
@@ -183,7 +183,7 @@ public class RKTTSManager : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Microphone))
         {
-            Debug.Log("RKTTSManager: 请求音频录制权限...");
+            LoggerManager.Debug("请求音频录制权限...", "TTS");
             UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.Microphone);
         }
 #endif
@@ -197,13 +197,13 @@ public class RKTTSManager : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageRead))
         {
-            Debug.Log("RKTTSManager: 请求读取存储权限...");
+            LoggerManager.Debug("请求读取存储权限...", "TTS");
             UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.ExternalStorageRead);
         }
 
         if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageWrite))
         {
-            Debug.Log("RKTTSManager: 请求写入存储权限...");
+            LoggerManager.Debug("请求写入存储权限...", "TTS");
             UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.ExternalStorageWrite);
         }
 #endif
@@ -226,7 +226,7 @@ public class RKTTSManager : MonoBehaviour
 
             if (hasStorage && hasAudio)
             {
-                Debug.Log("RKTTSManager: 所有权限已授予，开始初始化");
+                LoggerManager.Debug("所有权限已授予，开始初始化", "TTS");
                 InitializeRKTTS();
                 yield break;
             }
@@ -236,7 +236,7 @@ public class RKTTSManager : MonoBehaviour
         }
 
         // 超时或用户拒绝权限
-        Debug.LogWarning("RKTTSManager: 未获得全部权限，尝试继续初始化（可能失败）");
+        LoggerManager.Warning("未获得全部权限，尝试继续初始化（可能失败）", "TTS");
         InitializeRKTTS();
 #endif
         yield return null;
@@ -251,11 +251,11 @@ public class RKTTSManager : MonoBehaviour
         try
         {
             if (enableDebugLog)
-                Debug.Log("RKTTSManager: 开始初始化 RKTTS...");
+                LoggerManager.Debug("开始初始化 RKTTS...", "TTS");
 
             // 步骤 1: 获取 Unity Activity
             if (enableDebugLog)
-                Debug.Log("RKTTSManager: [1/4] 获取 Unity Activity...");
+                LoggerManager.Debug("[1/4] 获取 Unity Activity...", "TTS");
 
             using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
             {
@@ -264,16 +264,16 @@ public class RKTTSManager : MonoBehaviour
 
             if (unityActivity == null)
             {
-                Debug.LogError("RKTTSManager: 无法获取 Unity Activity");
+                LoggerManager.Error("无法获取 Unity Activity", "TTS");
                 return;
             }
 
             if (enableDebugLog)
-                Debug.Log("RKTTSManager: [1/4] ✅ Unity Activity 获取成功");
+                LoggerManager.Debug("[1/4] ✅ Unity Activity 获取成功", "TTS");
 
             // 步骤 2: 创建 SenseRKTtsDetector 实例
             if (enableDebugLog)
-                Debug.Log("RKTTSManager: [2/4] 创建 SenseRKTtsDetector 实例...");
+                LoggerManager.Debug("[2/4] 创建 SenseRKTtsDetector 实例...", "TTS");
 
             // 尝试 1: 使用 Application 参数的构造函数（最常见）
             try
@@ -282,11 +282,11 @@ public class RKTTSManager : MonoBehaviour
                 ttsDetector = new AndroidJavaObject("com.senseflow.rktts.SenseRKTtsDetector", application);
 
                 if (enableDebugLog)
-                    Debug.Log("RKTTSManager: [2/4] ✅ 使用构造函数 (Application) 创建成功");
+                    LoggerManager.Debug("[2/4] ✅ 使用构造函数 (Application) 创建成功", "TTS");
             }
             catch (System.Exception e1)
             {
-                Debug.LogWarning($"RKTTSManager: 构造函数 (Application) 失败: {e1.Message}");
+                LoggerManager.Warning($"构造函数 (Application) 失败: {e1.Message}", "TTS");
 
                 // 尝试 2: 使用 Activity 参数的构造函数
                 try
@@ -294,11 +294,11 @@ public class RKTTSManager : MonoBehaviour
                     ttsDetector = new AndroidJavaObject("com.senseflow.rktts.SenseRKTtsDetector", unityActivity);
 
                     if (enableDebugLog)
-                        Debug.Log("RKTTSManager: [2/4] ✅ 使用构造函数 (Activity) 创建成功");
+                        LoggerManager.Debug("[2/4] ✅ 使用构造函数 (Activity) 创建成功", "TTS");
                 }
                 catch (System.Exception e2)
                 {
-                    Debug.LogError($"RKTTSManager: 构造函数 (Activity) 也失败: {e2.Message}");
+                    LoggerManager.Error($"构造函数 (Activity) 也失败: {e2.Message}", "TTS");
 
                     // 尝试 3: 无参构造函数
                     try
@@ -306,14 +306,14 @@ public class RKTTSManager : MonoBehaviour
                         ttsDetector = new AndroidJavaObject("com.senseflow.rktts.SenseRKTtsDetector");
 
                         if (enableDebugLog)
-                            Debug.Log("RKTTSManager: [2/4] ✅ 使用无参构造函数创建成功");
+                            LoggerManager.Debug("[2/4] ✅ 使用无参构造函数创建成功", "TTS");
                     }
                     catch (System.Exception e3)
                     {
-                        Debug.LogError($"RKTTSManager: 所有构造方法都失败");
-                        Debug.LogError($"  - Application: {e1.Message}");
-                        Debug.LogError($"  - Activity: {e2.Message}");
-                        Debug.LogError($"  - 无参: {e3.Message}");
+                        LoggerManager.Error($"所有构造方法都失败", "TTS");
+                        LoggerManager.Error($"  - Application: {e1.Message}", "TTS");
+                        LoggerManager.Error($"  - Activity: {e2.Message}", "TTS");
+                        LoggerManager.Error($"  - 无参: {e3.Message}", "TTS");
                         return;
                     }
                 }
@@ -321,22 +321,22 @@ public class RKTTSManager : MonoBehaviour
 
             if (ttsDetector == null)
             {
-                Debug.LogError("RKTTSManager: 无法创建 SenseRKTtsDetector 实例");
+                LoggerManager.Error("无法创建 SenseRKTtsDetector 实例", "TTS");
                 return;
             }
 
             // 步骤 3: 设置结果监听器
             if (enableDebugLog)
-                Debug.Log("RKTTSManager: [3/4] 设置结果监听器...");
+                LoggerManager.Debug("[3/4] 设置结果监听器...", "TTS");
 
             ttsDetector.Call("setOnResultListener", new RKTTSResultListener(this));
 
             if (enableDebugLog)
-                Debug.Log("RKTTSManager: [3/4] ✅ 结果监听器设置成功");
+                LoggerManager.Debug("[3/4] ✅ 结果监听器设置成功", "TTS");
 
             // 步骤 4: 初始化并启动
             if (enableDebugLog)
-                Debug.Log("RKTTSManager: [4/4] 初始化并启动 TTS...");
+                LoggerManager.Debug("[4/4] 初始化并启动 TTS...", "TTS");
 
             ttsDetector.Call("initialize");
             ttsDetector.Call("start");
@@ -344,11 +344,11 @@ public class RKTTSManager : MonoBehaviour
             isInitialized = true;
 
             if (enableDebugLog)
-                Debug.Log("RKTTSManager: ✅ RKTTS 初始化完成");
+                LoggerManager.Info("✅ RKTTS 初始化完成", "TTS");
         }
         catch (Exception e)
         {
-            Debug.LogError($"RKTTSManager: 初始化失败 - {e.Message}\n{e.StackTrace}");
+            LoggerManager.Error($"初始化失败 - {e.Message}\n{e.StackTrace}", "TTS");
             OnTTSError?.Invoke($"初始化失败: {e.Message}");
             isInitialized = false;
         }
@@ -366,14 +366,14 @@ public class RKTTSManager : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!isInitialized)
         {
-            Debug.LogError("RKTTSManager: RKTTS 未初始化");
+            LoggerManager.Error("RKTTS 未初始化", "TTS");
             OnTTSError?.Invoke("RKTTS 未初始化");
             return;
         }
 
         if (string.IsNullOrEmpty(text))
         {
-            Debug.LogWarning("RKTTSManager: 文本不能为空");
+            LoggerManager.Warning("文本不能为空", "TTS");
             return;
         }
 
@@ -383,14 +383,14 @@ public class RKTTSManager : MonoBehaviour
             float actualPitch = customPitch ?? pitch;
 
             if (enableDebugLog)
-                Debug.Log($"RKTTSManager: 开始 TTS - 文本: '{text}', 速度: {actualSpeed}, 音调: {actualPitch}");
+                LoggerManager.Debug($"开始 TTS - 文本: '{text}', 速度: {actualSpeed}, 音调: {actualPitch}", "TTS");
 
             // 清空 audioPlayer 的缓冲区，准备接收新数据（防止重复播放）
             if (audioPlayer != null)
             {
                 audioPlayer.ClearBuffer();
                 if (enableDebugLog)
-                    Debug.Log("RKTTSManager: 已清空音频缓冲区");
+                    LoggerManager.Debug("已清空音频缓冲区", "TTS");
             }
 
             // 根据 Kotlin 示例: tts(text: String, speed: Float, pitch: Int)
@@ -403,12 +403,12 @@ public class RKTTSManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"RKTTSManager: TTS 执行失败 - {e.Message}");
+            LoggerManager.Error($"TTS 执行失败 - {e.Message}", "TTS");
             OnTTSError?.Invoke($"TTS 执行失败: {e.Message}");
             isPlaying = false;
         }
 #else
-        Debug.LogWarning($"RKTTSManager: [模拟] TTS - {text}");
+        LoggerManager.Warning($"[模拟] TTS - {text}", "TTS");
         // 编辑器模式下的模拟
         StartCoroutine(SimulateTTS(text));
 #endif
@@ -425,13 +425,13 @@ public class RKTTSManager : MonoBehaviour
             try
             {
                 if (enableDebugLog)
-                    Debug.Log("RKTTSManager: 停止 TTS");
+                    LoggerManager.Debug("停止 TTS", "TTS");
 
                 ttsDetector.Call("stop");
             }
             catch (Exception e)
             {
-                Debug.LogError($"RKTTSManager: 停止 TTS 失败 - {e.Message}");
+                LoggerManager.Error($"停止 TTS 失败 - {e.Message}", "TTS");
             }
         }
 #endif
@@ -480,7 +480,7 @@ public class RKTTSManager : MonoBehaviour
     internal void HandleResult(float[] result, bool isChunk)
     {
         if (enableDebugLog)
-            Debug.Log($"RKTTSManager: 收到音频数据 - 大小: {result?.Length ?? 0}, isChunk: {isChunk}");
+            LoggerManager.Debug($"收到音频数据 - 大小: {result?.Length ?? 0}, isChunk: {isChunk}", "TTS");
 
         OnTTSResult?.Invoke(result, isChunk);
 
@@ -490,14 +490,14 @@ public class RKTTSManager : MonoBehaviour
             audioPlayer.AddAudioData(result);
 
             if (enableDebugLog)
-                Debug.Log($"RKTTSManager: 已添加 {result.Length} 个音频采样到播放器");
+                LoggerManager.Debug($"已添加 {result.Length} 个音频采样到播放器", "TTS");
         }
 
         // 如果不是分块（isChunk = false），说明音频接收完成
         if (!isChunk)
         {
             if (enableDebugLog)
-                Debug.Log("RKTTSManager: TTS 音频接收完成");
+                LoggerManager.Debug("TTS 音频接收完成", "TTS");
 
             // 自动播放（如果启用）
             if (autoPlayAudio && audioPlayer != null)
@@ -524,7 +524,7 @@ public class RKTTSManager : MonoBehaviour
         OnTTSFinished?.Invoke();
 
         if (enableDebugLog)
-            Debug.Log("RKTTSManager: 音频播放完成");
+            LoggerManager.Debug("音频播放完成", "TTS");
     }
 
     void OnDestroy()
@@ -542,7 +542,7 @@ public class RKTTSManager : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.LogError($"RKTTSManager: 销毁时出错 - {e.Message}");
+                LoggerManager.Error($"销毁时出错 - {e.Message}", "TTS");
             }
         }
 #endif
@@ -573,7 +573,7 @@ public class RKTTSManager : MonoBehaviour
     {
         speed = Mathf.Clamp(newSpeed, 0.5f, 2.0f);
         if (enableDebugLog)
-            Debug.Log($"RKTTSManager: 设置速度为 {speed}");
+            LoggerManager.Debug($"设置速度为 {speed}", "TTS");
     }
 
     /// <summary>
@@ -583,7 +583,7 @@ public class RKTTSManager : MonoBehaviour
     {
         pitch = Mathf.Clamp(newPitch, 0.5f, 2.0f);
         if (enableDebugLog)
-            Debug.Log($"RKTTSManager: 设置音调为 {pitch}");
+            LoggerManager.Debug($"设置音调为 {pitch}", "TTS");
     }
 
     /// <summary>
@@ -599,7 +599,7 @@ public class RKTTSManager : MonoBehaviour
         }
 
         if (enableDebugLog)
-            Debug.Log($"RKTTSManager: 设置采样率为 {sampleRate} Hz");
+            LoggerManager.Debug($"设置采样率为 {sampleRate} Hz", "TTS");
     }
 
     /// <summary>
@@ -611,7 +611,7 @@ public class RKTTSManager : MonoBehaviour
         {
             audioPlayer.SetVolume(volume);
             if (enableDebugLog)
-                Debug.Log($"RKTTSManager: 设置音量为 {volume}");
+                LoggerManager.Debug($"设置音量为 {volume}", "TTS");
         }
     }
 

@@ -54,7 +54,7 @@ public class AnimationManager : MonoBehaviour
 
         if (animator == null)
         {
-            Debug.LogError("[AnimationManager] 未找到 Animator 组件！请确保角色上有 Animator 组件。");
+            LoggerManager.Error("未找到 Animator 组件！请确保角色上有 Animator 组件。", "Animation");
         }
     }
 
@@ -84,7 +84,7 @@ public class AnimationManager : MonoBehaviour
 
         if (string.IsNullOrEmpty(animationName))
         {
-            Debug.LogWarning("[AnimationManager] 动画名称为空！");
+            LoggerManager.Warning("动画名称为空！", "Animation");
             return;
         }
 
@@ -177,7 +177,7 @@ public class AnimationManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[AnimationManager] 没有上一个动画状态！");
+            LoggerManager.Warning("没有上一个动画状态！", "Animation");
         }
     }
 
@@ -390,7 +390,7 @@ public class AnimationManager : MonoBehaviour
     {
         if (animator == null)
         {
-            Debug.LogError("[AnimationManager] Animator 组件为空！");
+            LoggerManager.Error("Animator 组件为空！", "Animation");
             return false;
         }
         return true;
@@ -425,7 +425,7 @@ public class AnimationManager : MonoBehaviour
     {
         if (enableDebugLog)
         {
-            Debug.Log($"[AnimationManager] {message}");
+            LoggerManager.Debug(message, "Animation");
         }
     }
 

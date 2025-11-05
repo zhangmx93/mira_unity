@@ -26,20 +26,20 @@ public class RKFaceManager : MonoBehaviour
 
     void Awake()
     {
-        Debug.Log("RKFaceManager: Awake() 被调用");
+        LoggerManager.Debug("Awake() 被调用", "Face");
 
         // 延迟加载模式：初始时禁用，等待 SDKLoader 启用
         enabled = false;
-        Debug.Log("RKFaceManager: 已禁用，等待 SDKLoader 延迟加载");
+        LoggerManager.Debug("已禁用，等待 SDKLoader 延迟加载", "Face");
     }
 
     void OnEnable()
     {
-        Debug.Log("RKFaceManager: OnEnable() 被调用 - 开始初始化");
+        LoggerManager.Debug("OnEnable() 被调用 - 开始初始化", "Face");
 
         // 被 SDKLoader 启用时才开始初始化流程
 #if UNITY_ANDROID && !UNITY_EDITOR
-        Debug.Log("RKFaceManager: 检测到 Android 平台，准备初始化...");
+        LoggerManager.Debug("检测到 Android 平台，准备初始化...", "Face");
 
         // 请求存储权限（SDK需要访问模型文件）
         RequestStoragePermissions();
@@ -48,7 +48,7 @@ public class RKFaceManager : MonoBehaviour
         StartCoroutine(InitializeAfterPermissions());
 #else
         if (enableDebugLog)
-            Debug.LogWarning("RKFaceManager: 当前平台不支持 RKFace (仅支持 Android)");
+            LoggerManager.Warning("当前平台不支持 RKFace (仅支持 Android)", "Face");
 #endif
     }
 
@@ -60,13 +60,13 @@ public class RKFaceManager : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageRead))
         {
-            Debug.Log("RKFaceManager: 请求读取存储权限...");
+            LoggerManager.Debug("请求读取存储权限...", "Face");
             UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.ExternalStorageRead);
         }
 
         if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageWrite))
         {
-            Debug.Log("RKFaceManager: 请求写入存储权限...");
+            LoggerManager.Debug("请求写入存储权限...", "Face");
             UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.ExternalStorageWrite);
         }
 #endif
@@ -86,7 +86,7 @@ public class RKFaceManager : MonoBehaviour
         {
             if (UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageRead))
             {
-                Debug.Log("RKFaceManager: 存储权限已授予，开始初始化");
+                LoggerManager.Debug("存储权限已授予，开始初始化", "Face");
                 InitializeRKFace();
                 yield break;
             }
@@ -96,7 +96,7 @@ public class RKFaceManager : MonoBehaviour
         }
 
         // 超时或用户拒绝权限
-        Debug.LogWarning("RKFaceManager: 未获得存储权限，尝试继续初始化（可能失败）");
+        LoggerManager.Warning("未获得存储权限，尝试继续初始化（可能失败）", "Face");
         InitializeRKFace();
 #endif
         yield return null;
@@ -111,43 +111,43 @@ public class RKFaceManager : MonoBehaviour
         try
         {
             if (enableDebugLog)
-                Debug.Log("RKFaceManager: 开始初始化 RKFace SDK...");
+                LoggerManager.Debug("开始初始化 RKFace SDK...", "Face");
 
             // 步骤 1: 获取当前 Activity
             if (enableDebugLog)
-                Debug.Log("RKFaceManager: [1/3] 获取 Unity Activity...");
+                LoggerManager.Debug("[1/3] 获取 Unity Activity...", "Face");
 
             unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
             currentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
 
             if (currentActivity == null)
             {
-                Debug.LogError("RKFaceManager: 无法获取 Unity Activity");
+                LoggerManager.Error("无法获取 Unity Activity", "Face");
                 return;
             }
 
             if (enableDebugLog)
-                Debug.Log("RKFaceManager: [1/3] ✅ Unity Activity 获取成功");
+                LoggerManager.Debug("[1/3] ✅ Unity Activity 获取成功", "Face");
 
             // 步骤 2: 创建 RKFace 实例
             if (enableDebugLog)
-                Debug.Log("RKFaceManager: [2/3] 创建 RKFaceSDK 实例...");
+                LoggerManager.Debug("[2/3] 创建 RKFaceSDK 实例...", "Face");
 
             AndroidJavaClass rkfaceClass = new AndroidJavaClass("com.senseflow.rkface.RKFaceSDK");
             rkfaceInstance = rkfaceClass.CallStatic<AndroidJavaObject>("getInstance");
 
             if (rkfaceInstance == null)
             {
-                Debug.LogError("RKFaceManager: 无法获取 RKFace SDK 实例");
+                LoggerManager.Error("无法获取 RKFace SDK 实例", "Face");
                 return;
             }
 
             if (enableDebugLog)
-                Debug.Log("RKFaceManager: [2/3] ✅ RKFaceSDK 实例创建成功");
+                LoggerManager.Debug("[2/3] ✅ RKFaceSDK 实例创建成功", "Face");
 
             // 步骤 3: 初始化 SDK
             if (enableDebugLog)
-                Debug.Log("RKFaceManager: [3/3] 初始化 SDK...");
+                LoggerManager.Debug("[3/3] 初始化 SDK...", "Face");
 
             bool success = rkfaceInstance.Call<bool>("init", currentActivity, modelPath);
 
@@ -155,17 +155,17 @@ public class RKFaceManager : MonoBehaviour
             {
                 isInitialized = true;
                 if (enableDebugLog)
-                    Debug.Log("RKFaceManager: ✅ RKFace SDK 初始化成功！");
+                    LoggerManager.Info("✅ RKFace SDK 初始化成功！", "Face");
             }
             else
             {
-                Debug.LogError("RKFaceManager: RKFace SDK 初始化失败！");
+                LoggerManager.Error("RKFace SDK 初始化失败！", "Face");
                 isInitialized = false;
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"RKFaceManager: 初始化异常 - {e.Message}\n{e.StackTrace}");
+            LoggerManager.Error($"初始化异常 - {e.Message}\n{e.StackTrace}", "Face");
             isInitialized = false;
         }
 #endif
@@ -181,7 +181,7 @@ public class RKFaceManager : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!isInitialized)
         {
-            Debug.LogWarning("[RKFace] SDK 未初始化，请先调用 InitializeRKFace()");
+            LoggerManager.Warning("SDK 未初始化，请先调用 InitializeRKFace()", "Face");
             return null;
         }
 
@@ -190,16 +190,16 @@ public class RKFaceManager : MonoBehaviour
             // 调用人脸检测方法
             // 注意：实际的方法名和参数需要根据 RKFace SDK 的文档进行调整
             string result = rkfaceInstance.Call<string>("detectFace", imageBytes);
-            Debug.Log($"[RKFace] 人脸检测结果: {result}");
+            LoggerManager.Debug($"人脸检测结果: {result}", "Face");
             return result;
         }
         catch (Exception e)
         {
-            Debug.LogError($"[RKFace] 人脸检测异常: {e.Message}");
+            LoggerManager.Error($"人脸检测异常: {e.Message}", "Face");
             return null;
         }
 #else
-        Debug.LogWarning("[RKFace] 仅在 Android 设备上可用！");
+        LoggerManager.Warning("仅在 Android 设备上可用！", "Face");
         return null;
 #endif
     }
@@ -214,23 +214,23 @@ public class RKFaceManager : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!isInitialized)
         {
-            Debug.LogWarning("[RKFace] SDK 未初始化！");
+            LoggerManager.Warning("SDK 未初始化！", "Face");
             return null;
         }
 
         try
         {
             string result = rkfaceInstance.Call<string>("recognizeFace", imageBytes);
-            Debug.Log($"[RKFace] 人脸识别结果: {result}");
+            LoggerManager.Debug($"人脸识别结果: {result}", "Face");
             return result;
         }
         catch (Exception e)
         {
-            Debug.LogError($"[RKFace] 人脸识别异常: {e.Message}");
+            LoggerManager.Error($"人脸识别异常: {e.Message}", "Face");
             return null;
         }
 #else
-        Debug.LogWarning("[RKFace] 仅在 Android 设备上可用！");
+        LoggerManager.Warning("仅在 Android 设备上可用！", "Face");
         return null;
 #endif
     }
@@ -245,7 +245,7 @@ public class RKFaceManager : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!isInitialized)
         {
-            Debug.LogWarning("[RKFace] SDK 未初始化！");
+            LoggerManager.Warning("SDK 未初始化！", "Face");
             return null;
         }
 
@@ -258,16 +258,16 @@ public class RKFaceManager : MonoBehaviour
             {
                 // 转换为 float[]
                 float[] features = AndroidJNIHelper.ConvertFromJNIArray<float[]>(featureArray.GetRawObject());
-                Debug.Log($"[RKFace] 提取特征维度: {features.Length}");
+                LoggerManager.Debug($"提取特征维度: {features.Length}", "Face");
                 return features;
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"[RKFace] 特征提取异常: {e.Message}");
+            LoggerManager.Error($"特征提取异常: {e.Message}", "Face");
         }
 #else
-        Debug.LogWarning("[RKFace] 仅在 Android 设备上可用！");
+        LoggerManager.Warning("仅在 Android 设备上可用！", "Face");
 #endif
         return null;
     }
@@ -283,13 +283,13 @@ public class RKFaceManager : MonoBehaviour
             if (rkfaceInstance != null)
             {
                 string version = rkfaceInstance.Call<string>("getVersion");
-                Debug.Log($"[RKFace] SDK 版本: {version}");
+                LoggerManager.Debug($"SDK 版本: {version}", "Face");
                 return version;
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"[RKFace] 获取版本异常: {e.Message}");
+            LoggerManager.Error($"获取版本异常: {e.Message}", "Face");
         }
 #endif
         return "N/A";
@@ -306,13 +306,13 @@ public class RKFaceManager : MonoBehaviour
             if (rkfaceInstance != null)
             {
                 rkfaceInstance.Call("release");
-                Debug.Log("[RKFace] SDK 资源已释放");
+                LoggerManager.Debug("SDK 资源已释放", "Face");
                 isInitialized = false;
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"[RKFace] 释放资源异常: {e.Message}");
+            LoggerManager.Error($"释放资源异常: {e.Message}", "Face");
         }
 #endif
     }

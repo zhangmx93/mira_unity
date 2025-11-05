@@ -82,7 +82,7 @@ public class LoadingPanelController : MonoBehaviour
         }
 
         if (enableDebugLog)
-            Debug.Log("LoadingPanelController: 初始化完成");
+            LoggerManager.Info("初始化完成", "LoadingPanel");
     }
 
     void Start()
@@ -90,7 +90,7 @@ public class LoadingPanelController : MonoBehaviour
         // 检查 SDKLoadMonitor 是否存在
         if (SDKLoadMonitor.Instance == null)
         {
-            Debug.LogError("LoadingPanelController: 未找到 SDKLoadMonitor，无法监听加载事件");
+            LoggerManager.Error("未找到 SDKLoadMonitor，无法监听加载事件", "LoadingPanel");
             return;
         }
 
@@ -101,7 +101,7 @@ public class LoadingPanelController : MonoBehaviour
             characterAnimationWasPaused = true;
 
             if (enableDebugLog)
-                Debug.Log("LoadingPanelController: 已暂停角色动画");
+                LoggerManager.Info("已暂停角色动画", "LoadingPanel");
         }
 
         // 订阅 SDK 加载完成事件
@@ -120,7 +120,7 @@ public class LoadingPanelController : MonoBehaviour
         }
 
         if (enableDebugLog)
-            Debug.Log("LoadingPanelController: 开始监听 SDK 加载状态");
+            LoggerManager.Info("开始监听 SDK 加载状态", "LoadingPanel");
     }
 
     /// <summary>
@@ -129,7 +129,7 @@ public class LoadingPanelController : MonoBehaviour
     void OnSDKsLoadComplete()
     {
         if (enableDebugLog)
-            Debug.Log("LoadingPanelController: 收到 SDK 加载完成事件，准备关闭加载面板");
+            LoggerManager.Info("收到 SDK 加载完成事件，准备关闭加载面板", "LoadingPanel");
 
         // 延迟关闭面板
         StartCoroutine(CloseLoadingPanelWithDelay());
@@ -140,7 +140,7 @@ public class LoadingPanelController : MonoBehaviour
     /// </summary>
     void OnSDKsLoadFailed(string error)
     {
-        Debug.LogError($"LoadingPanelController: SDK 加载失败 - {error}");
+        LoggerManager.Error($"SDK 加载失败 - {error}", "LoadingPanel");
 
         // 显示错误信息
         if (statusText != null)
@@ -179,7 +179,7 @@ public class LoadingPanelController : MonoBehaviour
             characterAnimationManager.ResumeAnimation();
 
             if (enableDebugLog)
-                Debug.Log("LoadingPanelController: 已恢复角色动画");
+                LoggerManager.Info("已恢复角色动画", "LoadingPanel");
         }
 
         // 等待一小段时间让用户看到完成状态
@@ -197,7 +197,7 @@ public class LoadingPanelController : MonoBehaviour
             loadingPanel.SetActive(false);
 
             if (enableDebugLog)
-                Debug.Log("LoadingPanelController: 加载面板已关闭");
+                LoggerManager.Info("加载面板已关闭", "LoadingPanel");
         }
     }
 
@@ -295,7 +295,7 @@ public class LoadingPanelController : MonoBehaviour
         }
 
         if (enableDebugLog)
-            Debug.Log("LoadingPanelController: 立即关闭加载面板");
+            LoggerManager.Info("立即关闭加载面板", "LoadingPanel");
     }
 
     void OnDestroy()
