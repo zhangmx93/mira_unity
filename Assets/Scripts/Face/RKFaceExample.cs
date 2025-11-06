@@ -41,7 +41,7 @@ public class RKFaceExample : MonoBehaviour
             rkfaceManager = FindObjectOfType<RKFaceManager>();
             if (rkfaceManager == null)
             {
-                Debug.LogError("[RKFaceExample] 场景中未找到 RKFaceManager！");
+                LoggerManager.Error("场景中未找到 RKFaceManager！", "Face");
                 UpdateStatus("错误：未找到 RKFaceManager");
                 return;
             }
@@ -74,11 +74,11 @@ public class RKFaceExample : MonoBehaviour
 
             webCamTexture.Play();
             UpdateStatus("摄像头已启动");
-            Debug.Log("[RKFaceExample] 摄像头已启动");
+            LoggerManager.Debug("摄像头已启动", "Face");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[RKFaceExample] 启动摄像头失败: {e.Message}");
+            LoggerManager.Error($"启动摄像头失败: {e.Message}", "Face");
             UpdateStatus($"摄像头启动失败: {e.Message}");
         }
     }
@@ -92,7 +92,7 @@ public class RKFaceExample : MonoBehaviour
         {
             webCamTexture.Stop();
             UpdateStatus("摄像头已停止");
-            Debug.Log("[RKFaceExample] 摄像头已停止");
+            LoggerManager.Debug("摄像头已停止", "Face");
         }
     }
 
@@ -243,7 +243,7 @@ public class RKFaceExample : MonoBehaviour
         {
             statusText.text = $"状态: {message}";
         }
-        Debug.Log($"[RKFaceExample] 状态: {message}");
+        LoggerManager.Debug($"状态: {message}", "Face");
     }
 
     /// <summary>
@@ -255,7 +255,7 @@ public class RKFaceExample : MonoBehaviour
         {
             resultText.text = message;
         }
-        Debug.Log($"[RKFaceExample] 结果: {message}");
+        LoggerManager.Debug($"结果: {message}", "Face");
     }
 
     void OnDestroy()

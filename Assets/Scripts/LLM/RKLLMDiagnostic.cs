@@ -11,13 +11,13 @@ public class RKLLMDiagnostic : MonoBehaviour
         #if UNITY_ANDROID && !UNITY_EDITOR
         DiagnoseSDK();
         #else
-        Debug.Log("RKLLMDiagnostic: 仅在 Android 设备上运行诊断");
+        LoggerManager.Debug("仅在 Android 设备上运行诊断", "LLM");
         #endif
     }
 
     private void DiagnoseSDK()
     {
-        Debug.Log("========== RKLLM SDK 诊断开始 ==========");
+        LoggerManager.Info("========== RKLLM SDK 诊断开始 ==========", "LLM");
 
         // 1. 检查 Unity Activity
         try
@@ -27,17 +27,17 @@ public class RKLLMDiagnostic : MonoBehaviour
                 AndroidJavaObject activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
                 if (activity != null)
                 {
-                    Debug.Log("✅ [1/5] Unity Activity 获取成功");
+                    LoggerManager.Info("✅ [1/5] Unity Activity 获取成功", "LLM");
                 }
                 else
                 {
-                    Debug.LogError("❌ [1/5] Unity Activity 为 null");
+                    LoggerManager.Error("❌ [1/5] Unity Activity 为 null", "LLM");
                 }
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ [1/5] 获取 Unity Activity 失败: {e.Message}");
+            LoggerManager.Error($"❌ [1/5] 获取 Unity Activity 失败: {e.Message}", "LLM");
         }
 
         // 2. 检查 RKLLM 主类
@@ -56,15 +56,15 @@ public class RKLLMDiagnostic : MonoBehaviour
             {
                 AndroidJavaObject activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
                 AndroidJavaObject classLoader = activity.Call<AndroidJavaObject>("getClassLoader");
-                Debug.Log($"✅ [5/5] ClassLoader 获取成功: {classLoader.Call<string>("toString")}");
+                LoggerManager.Info($"✅ [5/5] ClassLoader 获取成功: {classLoader.Call<string>("toString")}", "LLM");
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ [5/5] ClassLoader 获取失败: {e.Message}");
+            LoggerManager.Error($"❌ [5/5] ClassLoader 获取失败: {e.Message}", "LLM");
         }
 
-        Debug.Log("========== RKLLM SDK 诊断结束 ==========");
+        LoggerManager.Info("========== RKLLM SDK 诊断结束 ==========", "LLM");
     }
 
     private void CheckClass(string className, string description)
@@ -75,7 +75,7 @@ public class RKLLMDiagnostic : MonoBehaviour
             {
                 if (javaClass != null)
                 {
-                    Debug.Log($"✅ {description}: 找到类 {className}");
+                    LoggerManager.Info($"✅ {description}: 找到类 {className}", "LLM");
 
                     // 尝试调用 getInstance 方法（如果存在）
                     if (className.Contains("SenseRKLlmDetector"))
@@ -86,28 +86,28 @@ public class RKLLMDiagnostic : MonoBehaviour
                             AndroidJavaObject instance = javaClass.CallStatic<AndroidJavaObject>("getInstance");
                             if (instance != null)
                             {
-                                Debug.Log($"   ✅ getInstance() 方法调用成功 (无参数)");
+                                LoggerManager.Info($"   ✅ getInstance() 方法调用成功 (无参数)", "LLM");
                             }
                             else
                             {
-                                Debug.LogWarning($"   ⚠️ getInstance() 返回 null");
+                                LoggerManager.Warning($"   ⚠️ getInstance() 返回 null", "LLM");
                             }
                         }
                         catch (System.Exception e)
                         {
-                            Debug.LogError($"   ❌ getInstance() 调用失败: {e.Message}");
+                            LoggerManager.Error($"   ❌ getInstance() 调用失败: {e.Message}", "LLM");
                         }
                     }
                 }
                 else
                 {
-                    Debug.LogError($"❌ {description}: 类 {className} 为 null");
+                    LoggerManager.Error($"❌ {description}: 类 {className} 为 null", "LLM");
                 }
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ {description}: 找不到类 {className}\n   错误: {e.Message}");
+            LoggerManager.Error($"❌ {description}: 找不到类 {className}\n   错误: {e.Message}", "LLM");
         }
     }
 }

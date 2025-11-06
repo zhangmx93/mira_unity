@@ -153,17 +153,17 @@ public class CameraCapture : MonoBehaviour
 
         if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
         {
-            Debug.Log("CameraCapture: 请求摄像头权限...");
+            LoggerManager.Info("请求摄像头权限...", "Camera");
             yield return Application.RequestUserAuthorization(UserAuthorization.WebCam);
         }
 
         if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
         {
-            Debug.LogError("CameraCapture: 摄像头权限被拒绝");
+            LoggerManager.Error("摄像头权限被拒绝", "Camera");
             yield break;
         }
 
-        Debug.Log("CameraCapture: 摄像头权限已授予");
+        LoggerManager.Info("摄像头权限已授予", "Camera");
         #else
         // macOS/Windows: 直接访问设备触发权限弹窗
         int deviceCount = WebCamTexture.devices.Length;
@@ -182,14 +182,14 @@ public class CameraCapture : MonoBehaviour
         if (isRunning)
         {
             if (enableDebugLog)
-                Debug.LogWarning("CameraCapture: 摄像头已在运行中");
+                LoggerManager.Warning("摄像头已在运行中", "Camera");
             return;
         }
 
         // 检查是否有可用的摄像头
         if (WebCamTexture.devices.Length == 0)
         {
-            Debug.LogError("CameraCapture: 未找到可用的摄像头设备");
+            LoggerManager.Error("未找到可用的摄像头设备", "Camera");
             return;
         }
 
@@ -201,7 +201,7 @@ public class CameraCapture : MonoBehaviour
             selectedDevice = Array.Find(WebCamTexture.devices, device => device.name == targetCameraName);
             if (string.IsNullOrEmpty(selectedDevice.name))
             {
-                Debug.LogWarning($"CameraCapture: 未找到名为 '{targetCameraName}' 的摄像头，使用默认摄像头");
+                LoggerManager.Warning($"未找到名为 '{targetCameraName}' 的摄像头，使用默认摄像头", "Camera");
                 selectedDevice = WebCamTexture.devices[0];
             }
         }
@@ -231,7 +231,7 @@ public class CameraCapture : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("CameraCapture: displayImage 未设置，摄像头画面不会显示");
+            LoggerManager.Warning("displayImage 未设置，摄像头画面不会显示", "Camera");
         }
 
         // 延迟检查摄像头是否真正启动并调整尺寸
@@ -249,7 +249,7 @@ public class CameraCapture : MonoBehaviour
         {
             if (webCamTexture.width <= 16)
             {
-                Debug.LogWarning("CameraCapture: 摄像头分辨率异常，可能还在初始化中");
+                LoggerManager.Warning("摄像头分辨率异常，可能还在初始化中", "Camera");
             }
             else
             {
@@ -259,7 +259,7 @@ public class CameraCapture : MonoBehaviour
 
             if (!webCamTexture.isPlaying)
             {
-                Debug.LogError("CameraCapture: 摄像头未在播放！可能没有摄像头权限或设备被占用");
+                LoggerManager.Error("摄像头未在播放！可能没有摄像头权限或设备被占用", "Camera");
             }
         }
     }
@@ -372,7 +372,7 @@ public class CameraCapture : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"CameraCapture: 捕获帧时出错: {e.Message}");
+            LoggerManager.Error($"捕获帧时出错: {e.Message}", "Camera");
         }
     }
 
@@ -384,7 +384,7 @@ public class CameraCapture : MonoBehaviour
     {
         if (webCamTexture == null || !isRunning)
         {
-            Debug.LogError("CameraCapture: 摄像头未运行，无法捕获图片");
+            LoggerManager.Error("摄像头未运行，无法捕获图片", "Camera");
             return null;
         }
 
@@ -505,7 +505,7 @@ public class CameraCapture : MonoBehaviour
     {
         if (webCamTexture == null || !isRunning)
         {
-            Debug.LogWarning("CameraCapture: 摄像头未运行，无法获取当前帧");
+            LoggerManager.Warning("摄像头未运行，无法获取当前帧", "Camera");
             return null;
         }
 

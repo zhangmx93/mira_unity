@@ -158,7 +158,7 @@ public class MicrophoneCapture : MonoBehaviour
 
         if (!Application.HasUserAuthorization(UserAuthorization.Microphone))
         {
-            Debug.LogError("MicrophoneCapture: 麦克风权限被拒绝");
+            LoggerManager.Error("麦克风权限被拒绝", "Audio");
             yield break;
         }
         #endif
@@ -185,14 +185,14 @@ public class MicrophoneCapture : MonoBehaviour
         if (isRecording)
         {
             if (enableDebugLog)
-                Debug.LogWarning("MicrophoneCapture: 麦克风已在录音中");
+                LoggerManager.Warning("麦克风已在录音中", "Audio");
             return;
         }
 
         // 检查是否有可用的麦克风
         if (Microphone.devices.Length == 0)
         {
-            Debug.LogError("MicrophoneCapture: 未找到可用的麦克风设备");
+            LoggerManager.Error("未找到可用的麦克风设备", "Audio");
             return;
         }
 
@@ -214,7 +214,7 @@ public class MicrophoneCapture : MonoBehaviour
 
             if (!found)
             {
-                Debug.LogWarning($"MicrophoneCapture: 未找到名为 '{targetMicrophoneName}' 的麦克风，使用默认麦克风");
+                LoggerManager.Warning($"未找到名为 '{targetMicrophoneName}' 的麦克风，使用默认麦克风", "Audio");
                 selectedDevice = Microphone.devices[0];
             }
         }

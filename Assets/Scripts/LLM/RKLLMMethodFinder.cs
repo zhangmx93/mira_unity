@@ -13,13 +13,13 @@ public class RKLLMMethodFinder : MonoBehaviour
         #if UNITY_ANDROID && !UNITY_EDITOR
         FindGetInstanceMethod();
         #else
-        Debug.Log("RKLLMMethodFinder: 仅在 Android 设备上运行");
+        LoggerManager.Debug("仅在 Android 设备上运行", "LLM");
         #endif
     }
 
     private void FindGetInstanceMethod()
     {
-        Debug.Log("========== 查找 getInstance 方法签名 ==========");
+        LoggerManager.Info("========== 查找 getInstance 方法签名 ==========", "LLM");
 
         try
         {
@@ -42,7 +42,7 @@ public class RKLLMMethodFinder : MonoBehaviour
                     // 获取所有方法
                     AndroidJavaObject[] methods = classObj.Call<AndroidJavaObject[]>("getMethods");
 
-                    Debug.Log($"找到 {methods.Length} 个方法");
+                    LoggerManager.Info($"找到 {methods.Length} 个方法", "LLM");
 
                     // 查找 getInstance 方法
                     foreach (AndroidJavaObject method in methods)
@@ -72,11 +72,11 @@ public class RKLLMMethodFinder : MonoBehaviour
                                     paramStr.Append(paramType.Call<string>("getName"));
                                 }
 
-                                Debug.Log($"✅ 找到方法: {methodName}");
-                                Debug.Log($"   静态方法: {isStatic}");
-                                Debug.Log($"   返回类型: {returnTypeName}");
-                                Debug.Log($"   参数类型: ({paramStr})");
-                                Debug.Log($"   完整签名: {method.Call<string>("toString")}");
+                                LoggerManager.Info($"✅ 找到方法: {methodName}", "LLM");
+                                LoggerManager.Info($"   静态方法: {isStatic}", "LLM");
+                                LoggerManager.Info($"   返回类型: {returnTypeName}", "LLM");
+                                LoggerManager.Info($"   参数类型: ({paramStr})", "LLM");
+                                LoggerManager.Info($"   完整签名: {method.Call<string>("toString")}", "LLM");
 
                                 // 尝试调用这个方法
                                 if (isStatic && methodName == "getInstance")
@@ -88,7 +88,7 @@ public class RKLLMMethodFinder : MonoBehaviour
                     }
 
                     // 查找构造函数
-                    Debug.Log("\n========== 查找构造函数 ==========");
+                    LoggerManager.Info("\n========== 查找构造函数 ==========", "LLM");
                     AndroidJavaObject[] constructors = classObj.Call<AndroidJavaObject[]>("getConstructors");
 
                     foreach (AndroidJavaObject constructor in constructors)
@@ -101,22 +101,22 @@ public class RKLLMMethodFinder : MonoBehaviour
                             paramStr.Append(paramType.Call<string>("getName"));
                         }
 
-                        Debug.Log($"✅ 构造函数参数: ({paramStr})");
+                        LoggerManager.Info($"✅ 构造函数参数: ({paramStr})", "LLM");
                     }
                 }
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"查找方法时出错: {e.Message}\n{e.StackTrace}");
+            LoggerManager.Error($"查找方法时出错: {e.Message}\n{e.StackTrace}", "LLM");
         }
 
-        Debug.Log("========== 查找完成 ==========");
+        LoggerManager.Info("========== 查找完成 ==========", "LLM");
     }
 
     private void TryCallMethod(AndroidJavaClass rkllmClass, string methodName, int paramCount, AndroidJavaObject activity)
     {
-        Debug.Log($"\n尝试调用 {methodName} (参数数量: {paramCount})");
+        LoggerManager.Info($"\n尝试调用 {methodName} (参数数量: {paramCount})", "LLM");
 
         try
         {
@@ -125,22 +125,22 @@ public class RKLLMMethodFinder : MonoBehaviour
             if (paramCount == 0)
             {
                 result = rkllmClass.CallStatic<AndroidJavaObject>(methodName);
-                Debug.Log($"✅ 无参数调用成功！");
+                LoggerManager.Info($"✅ 无参数调用成功！", "LLM");
             }
             else if (paramCount == 1)
             {
                 result = rkllmClass.CallStatic<AndroidJavaObject>(methodName, activity);
-                Debug.Log($"✅ 单参数(Activity)调用成功！");
+                LoggerManager.Info($"✅ 单参数(Activity)调用成功！", "LLM");
             }
 
             if (result != null)
             {
-                Debug.Log($"✅ 返回对象不为 null，类型: {result.Call<AndroidJavaObject>("getClass").Call<string>("getName")}");
+                LoggerManager.Info($"✅ 返回对象不为 null，类型: {result.Call<AndroidJavaObject>("getClass").Call<string>("getName")}", "LLM");
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"❌ 调用失败: {e.Message}");
+            LoggerManager.Error($"❌ 调用失败: {e.Message}", "LLM");
         }
     }
 }

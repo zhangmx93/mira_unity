@@ -28,7 +28,7 @@ public class CameraCaptureExample : MonoBehaviour
 
         if (cameraCapture == null)
         {
-            Debug.LogError("CameraCaptureExample: 未找到 CameraCapture 组件");
+            LoggerManager.Error("未找到 CameraCapture 组件", "Camera");
             return;
         }
 
@@ -92,7 +92,7 @@ public class CameraCaptureExample : MonoBehaviour
     /// </summary>
     void OnImageCaptured(Texture2D image)
     {
-        Debug.Log($"收到新图片: {image.width}x{image.height}");
+        LoggerManager.Debug($"收到新图片: {image.width}x{image.height}", "Camera");
 
         // 在这里可以对图片进行处理
         // 例如：应用滤镜、人脸检测、特征提取等
@@ -103,7 +103,7 @@ public class CameraCaptureExample : MonoBehaviour
     /// </summary>
     void OnImageBytesCaptured(byte[] imageBytes)
     {
-        Debug.Log($"收到新图片字节数组: {imageBytes.Length / 1024}KB");
+        LoggerManager.Debug($"收到新图片字节数组: {imageBytes.Length / 1024}KB", "Camera");
 
         // 示例：发送到人脸识别 SDK
         // ProcessWithRKFace(imageBytes);
@@ -165,7 +165,7 @@ public class CameraCaptureExample : MonoBehaviour
         Texture2D image = cameraCapture.CaptureImage();
         if (image != null)
         {
-            Debug.Log($"手动捕获图片成功: {image.width}x{image.height}");
+            LoggerManager.Debug($"手动捕获图片成功: {image.width}x{image.height}", "Camera");
             UpdateStatus("已捕获图片");
 
             // 处理完后记得销毁
@@ -190,12 +190,12 @@ public class CameraCaptureExample : MonoBehaviour
             try
             {
                 System.IO.File.WriteAllBytes(path, imageBytes);
-                Debug.Log($"图片已保存到: {path}");
+                LoggerManager.Info($"图片已保存到: {path}", "Camera");
                 UpdateStatus($"图片已保存: {filename}");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"保存图片失败: {e.Message}");
+                LoggerManager.Error($"保存图片失败: {e.Message}", "Camera");
                 UpdateStatus("保存失败");
             }
         }
@@ -262,7 +262,7 @@ public class CameraCaptureExample : MonoBehaviour
         {
             statusText.text = message;
         }
-        Debug.Log($"CameraCaptureExample: {message}");
+        LoggerManager.Debug($"{message}", "Camera");
     }
 
     /// <summary>
@@ -318,7 +318,7 @@ public class CameraCaptureExample : MonoBehaviour
     {
         // 在这里添加你的图片处理逻辑
         // 例如：人脸检测、OCR、物体识别等
-        Debug.Log($"处理图片，大小: {imageBytes.Length / 1024}KB");
+        LoggerManager.Debug($"处理图片，大小: {imageBytes.Length / 1024}KB", "Camera");
     }
 
     #endregion

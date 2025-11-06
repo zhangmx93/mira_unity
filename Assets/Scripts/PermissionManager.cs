@@ -60,7 +60,7 @@ public class PermissionManager : MonoBehaviour
     public IEnumerator RequestAllPermissions()
     {
         if (enableDebugLog)
-            Debug.Log("PermissionManager: 开始请求权限...");
+            LoggerManager.Info("开始请求权限...", "Permission");
 
         #if UNITY_ANDROID || UNITY_IOS
         // Android/iOS 需要运行时请求权限
@@ -73,25 +73,25 @@ public class PermissionManager : MonoBehaviour
 
         // 2. 等待一小段时间，确保上一个权限对话框完全关闭
         if (enableDebugLog)
-            Debug.Log("PermissionManager: 等待 0.5 秒后请求摄像头权限...");
+            LoggerManager.Debug("等待 0.5 秒后请求摄像头权限...", "Permission");
         yield return new WaitForSeconds(0.5f);
 
         // 3. 请求摄像头权限
         if (enableDebugLog)
-            Debug.Log($"PermissionManager: requestCamera = {requestCamera}");
+            LoggerManager.Debug($"requestCamera = {requestCamera}", "Permission");
 
         if (requestCamera)
         {
             if (enableDebugLog)
-                Debug.Log("PermissionManager: 开始调用 RequestCameraPermission()...");
+                LoggerManager.Debug("开始调用 RequestCameraPermission()...", "Permission");
             yield return StartCoroutine(RequestCameraPermission());
             if (enableDebugLog)
-                Debug.Log("PermissionManager: RequestCameraPermission() 完成");
+                LoggerManager.Debug("RequestCameraPermission() 完成", "Permission");
         }
         else
         {
             if (enableDebugLog)
-                Debug.Log("PermissionManager: requestCamera = false, 跳过摄像头权限请求");
+                LoggerManager.Debug("requestCamera = false, 跳过摄像头权限请求", "Permission");
         }
 
         // 检查所有权限是否都已授予
@@ -100,22 +100,22 @@ public class PermissionManager : MonoBehaviour
         if (allPermissionsGranted)
         {
             if (enableDebugLog)
-                Debug.Log("PermissionManager: ✅ 所有权限已授予");
+                LoggerManager.Info("✅ 所有权限已授予", "Permission");
         }
         else
         {
-            Debug.LogWarning("PermissionManager: ⚠️ 部分权限未授予");
+            LoggerManager.Warning("⚠️ 部分权限未授予", "Permission");
             if (!microphoneGranted && requestMicrophone)
-                Debug.LogWarning("  - 麦克风权限未授予");
+                LoggerManager.Warning("  - 麦克风权限未授予", "Permission");
             if (!cameraGranted && requestCamera)
-                Debug.LogWarning("  - 摄像头权限未授予");
+                LoggerManager.Warning("  - 摄像头权限未授予", "Permission");
         }
 
         #else
         // macOS/Windows 等平台
         // 权限通过首次访问设备时的系统弹窗获得
         if (enableDebugLog)
-            Debug.Log("PermissionManager: 当前平台无需运行时权限请求");
+            LoggerManager.Debug("当前平台无需运行时权限请求", "Permission");
 
         // 直接标记为已授予（实际权限在访问设备时处理）
         cameraGranted = requestCamera;
@@ -133,7 +133,7 @@ public class PermissionManager : MonoBehaviour
     {
         #if UNITY_ANDROID || UNITY_IOS
         if (enableDebugLog)
-            Debug.Log("PermissionManager: 请求麦克风权限...");
+            LoggerManager.Debug("请求麦克风权限...", "Permission");
 
         if (!Application.HasUserAuthorization(UserAuthorization.Microphone))
         {
@@ -145,11 +145,11 @@ public class PermissionManager : MonoBehaviour
         if (microphoneGranted)
         {
             if (enableDebugLog)
-                Debug.Log("PermissionManager: ✅ 麦克风权限已授予");
+                LoggerManager.Info("✅ 麦克风权限已授予", "Permission");
         }
         else
         {
-            Debug.LogError("PermissionManager: ❌ 麦克风权限被拒绝");
+            LoggerManager.Error("❌ 麦克风权限被拒绝", "Permission");
         }
         #else
         microphoneGranted = true;
@@ -164,41 +164,41 @@ public class PermissionManager : MonoBehaviour
     {
         #if UNITY_ANDROID || UNITY_IOS
         if (enableDebugLog)
-            Debug.Log("PermissionManager: >>> 进入 RequestCameraPermission 方法");
+            LoggerManager.Debug(">>> 进入 RequestCameraPermission 方法", "Permission");
 
         bool hasPermissionBefore = Application.HasUserAuthorization(UserAuthorization.WebCam);
         if (enableDebugLog)
-            Debug.Log($"PermissionManager: 摄像头权限检查 - 当前状态: {hasPermissionBefore}");
+            LoggerManager.Debug($"摄像头权限检查 - 当前状态: {hasPermissionBefore}", "Permission");
 
         if (!hasPermissionBefore)
         {
             if (enableDebugLog)
-                Debug.Log("PermissionManager: 准备调用 RequestUserAuthorization(WebCam)...");
+                LoggerManager.Debug("准备调用 RequestUserAuthorization(WebCam)...", "Permission");
 
             yield return Application.RequestUserAuthorization(UserAuthorization.WebCam);
 
             if (enableDebugLog)
-                Debug.Log("PermissionManager: RequestUserAuthorization(WebCam) 调用完成");
+                LoggerManager.Debug("RequestUserAuthorization(WebCam) 调用完成", "Permission");
         }
         else
         {
             if (enableDebugLog)
-                Debug.Log("PermissionManager: 摄像头权限已存在，跳过请求");
+                LoggerManager.Debug("摄像头权限已存在，跳过请求", "Permission");
         }
 
         cameraGranted = Application.HasUserAuthorization(UserAuthorization.WebCam);
 
         if (enableDebugLog)
-            Debug.Log($"PermissionManager: 摄像头权限最终状态: {cameraGranted}");
+            LoggerManager.Debug($"摄像头权限最终状态: {cameraGranted}", "Permission");
 
         if (cameraGranted)
         {
             if (enableDebugLog)
-                Debug.Log("PermissionManager: ✅ 摄像头权限已授予");
+                LoggerManager.Info("✅ 摄像头权限已授予", "Permission");
         }
         else
         {
-            Debug.LogError("PermissionManager: ❌ 摄像头权限被拒绝");
+            LoggerManager.Error("❌ 摄像头权限被拒绝", "Permission");
         }
         #else
         cameraGranted = true;

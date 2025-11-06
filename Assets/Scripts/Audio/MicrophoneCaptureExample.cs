@@ -34,7 +34,7 @@ public class MicrophoneCaptureExample : MonoBehaviour
 
         if (microphoneCapture == null)
         {
-            Debug.LogError("MicrophoneCaptureExample: 未找到 MicrophoneCapture 组件");
+            LoggerManager.Error("未找到 MicrophoneCapture 组件", "Audio");
             return;
         }
 

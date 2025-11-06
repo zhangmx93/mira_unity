@@ -25,22 +25,22 @@ public class AnimationControllerExample : MonoBehaviour
             animationManager = GetComponent<AnimationManager>();
             if (animationManager == null)
             {
-                Debug.LogError("AnimationControllerExample: 未找到 AnimationManager 组件！请确保该脚本附加到有 AnimationManager 的对象上。");
+                LoggerManager.Error("未找到 AnimationManager 组件！请确保该脚本附加到有 AnimationManager 的对象上。", "Animation");
                 return;
             }
             else
             {
-                Debug.Log("AnimationControllerExample: 自动找到 AnimationManager 组件");
+                LoggerManager.Debug("自动找到 AnimationManager 组件", "Animation");
             }
         }
 
-        Debug.Log("AnimationControllerExample 已启动，可以使用键盘控制：\n" +
+        LoggerManager.Info("AnimationControllerExample 已启动，可以使用键盘控制：\n" +
                   "按 1 - Idle\n" +
                   "按 2 - Walk\n" +
                   "按 3 - Run\n" +
                   "按 空格 - Jump\n" +
                   "按 鼠标左键 - Attack\n" +
-                  "按 P - 暂停/恢复");
+                  "按 P - 暂停/恢复", "Animation");
 
         // 初始播放 Idle 动画
         if (animationManager != null)
@@ -62,49 +62,49 @@ public class AnimationControllerExample : MonoBehaviour
     {
         if (animationManager == null)
         {
-            Debug.LogWarning("AnimationControllerExample: animationManager 为空，无法处理输入");
+            LoggerManager.Warning("animationManager 为空，无法处理输入", "Animation");
             return;
         }
 
         // 按 1 键播放 Idle
         if (Input.GetKeyDown(KeyCode.Alpha1))
         {
-            Debug.Log("按下了键盘 1 - 播放 Idle 动画");
+            LoggerManager.Debug("按下了键盘 1 - 播放 Idle 动画", "Animation");
             PlayIdle();
         }
 
         // 按 2 键播放 Walk
         if (Input.GetKeyDown(KeyCode.Alpha2))
         {
-            Debug.Log("按下了键盘 2 - 播放 Walk 动画");
+            LoggerManager.Debug("按下了键盘 2 - 播放 Walk 动画", "Animation");
             PlayWalk();
         }
 
         // 按 3 键播放 Run
         if (Input.GetKeyDown(KeyCode.Alpha3))
         {
-            Debug.Log("按下了键盘 3 - 播放 Run 动画");
+            LoggerManager.Debug("按下了键盘 3 - 播放 Run 动画", "Animation");
             PlayRun();
         }
 
         // 按空格键播放 Jump
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            Debug.Log("按下了空格键 - 播放 Jump 动画");
+            LoggerManager.Debug("按下了空格键 - 播放 Jump 动画", "Animation");
             PlayJump();
         }
 
         // 按鼠标左键播放 Attack
         if (Input.GetMouseButtonDown(0))
         {
-            Debug.Log("按下了鼠标左键 - 播放 Attack 动画");
+            LoggerManager.Debug("按下了鼠标左键 - 播放 Attack 动画", "Animation");
             PlayAttack();
         }
 
         // 按 P 键暂停/恢复动画
         if (Input.GetKeyDown(KeyCode.P))
         {
-            Debug.Log("按下了 P 键 - 切换暂停状态");
+            LoggerManager.Debug("按下了 P 键 - 切换暂停状态", "Animation");
             TogglePause();
         }
     }
@@ -185,12 +185,12 @@ public class AnimationControllerExample : MonoBehaviour
         if (isPaused)
         {
             animationManager.PauseAnimation();
-            Debug.Log("动画已暂停");
+            LoggerManager.Debug("动画已暂停", "Animation");
         }
         else
         {
             animationManager.ResumeAnimation();
-            Debug.Log("动画已恢复");
+            LoggerManager.Debug("动画已恢复", "Animation");
         }
     }
 
@@ -223,7 +223,7 @@ public class AnimationControllerExample : MonoBehaviour
     {
         if (animationManager.IsAnimationFinished())
         {
-            Debug.Log($"动画 '{animationManager.GetCurrentAnimationState()}' 播放完成");
+            LoggerManager.Debug($"动画 '{animationManager.GetCurrentAnimationState()}' 播放完成", "Animation");
             // 返回待机状态
             PlayIdle();
         }
