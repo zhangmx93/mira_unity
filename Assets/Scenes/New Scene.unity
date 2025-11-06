@@ -1435,8 +1435,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enableLogging: 1
-  disableInReleaseBuild: 1
-  minimumLogLevel: 1
+  disableInReleaseBuild: 0
+  minimumLogLevel: 0
   showTimestamp: 1
   showLogLevel: 1
   showCategory: 1
@@ -1636,6 +1636,8 @@ MonoBehaviour:
   sampleRate: 16000
   autoPlayAudio: 1
   audioPlayer: {fileID: 47948093}
+  streamingAudioPlayer: {fileID: 0}
+  useStreamingPlayer: 1
 --- !u!1 &1421396371
 GameObject:
   m_ObjectHideFlags: 0

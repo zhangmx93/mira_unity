@@ -29,8 +29,14 @@ public class RKTTSManager : MonoBehaviour
     public bool autoPlayAudio = true;
 
     [Header("引用")]
-    [Tooltip("音频播放器组件")]
+    [Tooltip("音频播放器组件（旧版）")]
     public TTSAudioPlayer audioPlayer;
+
+    [Tooltip("流式音频播放器组件（新版，推荐）")]
+    public TTSStreamingAudioPlayer streamingAudioPlayer;
+
+    [Tooltip("是否使用流式播放器")]
+    public bool useStreamingPlayer = true;
 
     // Android JNI 相关
     private AndroidJavaObject ttsDetector;
@@ -64,22 +70,46 @@ public class RKTTSManager : MonoBehaviour
         instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // 自动创建或获取 TTSAudioPlayer
-        if (audioPlayer == null)
+        // 优先使用流式播放器
+        if (useStreamingPlayer)
         {
-            audioPlayer = GetComponent<TTSAudioPlayer>();
-            if (audioPlayer == null)
+            // 自动创建或获取 TTSStreamingAudioPlayer
+            if (streamingAudioPlayer == null)
             {
-                audioPlayer = gameObject.AddComponent<TTSAudioPlayer>();
-                LoggerManager.Debug("已自动添加 TTSAudioPlayer 组件", "TTS");
+                streamingAudioPlayer = GetComponent<TTSStreamingAudioPlayer>();
+                if (streamingAudioPlayer == null)
+                {
+                    streamingAudioPlayer = gameObject.AddComponent<TTSStreamingAudioPlayer>();
+                    LoggerManager.Debug("已自动添加 TTSStreamingAudioPlayer 组件", "TTS");
+                }
+            }
+
+            // 配置流式播放器的采样率
+            if (streamingAudioPlayer != null)
+            {
+                streamingAudioPlayer.sampleRate = sampleRate;
+                streamingAudioPlayer.channels = 1;  // TTS 通常是单声道
             }
         }
-
-        // 配置 audioPlayer 的采样率
-        if (audioPlayer != null)
+        else
         {
-            audioPlayer.sampleRate = sampleRate;
-            audioPlayer.channels = 1;  // TTS 通常是单声道
+            // 使用旧版播放器
+            if (audioPlayer == null)
+            {
+                audioPlayer = GetComponent<TTSAudioPlayer>();
+                if (audioPlayer == null)
+                {
+                    audioPlayer = gameObject.AddComponent<TTSAudioPlayer>();
+                    LoggerManager.Debug("已自动添加 TTSAudioPlayer 组件", "TTS");
+                }
+            }
+
+            // 配置 audioPlayer 的采样率
+            if (audioPlayer != null)
+            {
+                audioPlayer.sampleRate = sampleRate;
+                audioPlayer.channels = 1;  // TTS 通常是单声道
+            }
         }
 
         // 尝试设置 Unity 音频配置为 44100 Hz
@@ -103,11 +133,18 @@ public class RKTTSManager : MonoBehaviour
             sampleRate = 44100;
         }
 
-        // 确保 audioPlayer 采样率正确
-        if (audioPlayer != null && audioPlayer.sampleRate != 44100)
+        // 确保流式播放器采样率正确
+        if (useStreamingPlayer && streamingAudioPlayer != null && streamingAudioPlayer.sampleRate != 44100)
+        {
+            LoggerManager.Warning($"⚠️ StreamingAudioPlayer 采样率不是 44100 Hz (当前: {streamingAudioPlayer.sampleRate})，正在修复...", "TTS");
+            streamingAudioPlayer.SetSampleRate(44100);
+        }
+
+        // 确保传统播放器采样率正确
+        if (!useStreamingPlayer && audioPlayer != null && audioPlayer.sampleRate != 44100)
         {
             LoggerManager.Warning($"⚠️ AudioPlayer 采样率不是 44100 Hz (当前: {audioPlayer.sampleRate})，正在修复...", "TTS");
-            audioPlayer.sampleRate = 44100;
+            audioPlayer.SetSampleRate(44100);
         }
 
         // 被 SDKLoader 启用时才开始初始化
@@ -385,8 +422,14 @@ public class RKTTSManager : MonoBehaviour
             if (enableDebugLog)
                 LoggerManager.Debug($"开始 TTS - 文本: '{text}', 速度: {actualSpeed}, 音调: {actualPitch}", "TTS");
 
-            // 清空 audioPlayer 的缓冲区，准备接收新数据（防止重复播放）
-            if (audioPlayer != null)
+            // 清空播放器的缓冲区，准备接收新数据
+            if (useStreamingPlayer && streamingAudioPlayer != null)
+            {
+                streamingAudioPlayer.ClearBuffer();
+                if (enableDebugLog)
+                    LoggerManager.Debug("已清空流式播放器缓冲区", "TTS");
+            }
+            else if (audioPlayer != null)
             {
                 audioPlayer.ClearBuffer();
                 if (enableDebugLog)
@@ -437,7 +480,12 @@ public class RKTTSManager : MonoBehaviour
 #endif
 
         // 停止音频播放并清空缓冲区
-        if (audioPlayer != null)
+        if (useStreamingPlayer && streamingAudioPlayer != null)
+        {
+            streamingAudioPlayer.Stop();
+            streamingAudioPlayer.ClearBuffer();
+        }
+        else if (audioPlayer != null)
         {
             audioPlayer.Stop();
             audioPlayer.ClearBuffer();
@@ -484,13 +532,25 @@ public class RKTTSManager : MonoBehaviour
 
         OnTTSResult?.Invoke(result, isChunk);
 
-        // 将音频数据添加到 TTSAudioPlayer
-        if (result != null && result.Length > 0 && audioPlayer != null)
+        // 将音频数据添加到播放器
+        if (result != null && result.Length > 0)
         {
-            audioPlayer.AddAudioData(result);
+            if (useStreamingPlayer && streamingAudioPlayer != null)
+            {
+                // 使用流式播放器 - 立即添加 chunk 并自动播放
+                streamingAudioPlayer.AddAudioChunk(result, !isChunk);
 
-            if (enableDebugLog)
-                LoggerManager.Debug($"已添加 {result.Length} 个音频采样到播放器", "TTS");
+                if (enableDebugLog)
+                    LoggerManager.Debug($"已添加 {result.Length} 个音频采样到流式播放器 (isFinalChunk: {!isChunk})", "TTS");
+            }
+            else if (audioPlayer != null)
+            {
+                // 使用传统播放器 - 等待所有数据接收完成后播放
+                audioPlayer.AddAudioData(result);
+
+                if (enableDebugLog)
+                    LoggerManager.Debug($"已添加 {result.Length} 个音频采样到播放器", "TTS");
+            }
         }
 
         // 如果不是分块（isChunk = false），说明音频接收完成
@@ -499,8 +559,8 @@ public class RKTTSManager : MonoBehaviour
             if (enableDebugLog)
                 LoggerManager.Debug("TTS 音频接收完成", "TTS");
 
-            // 自动播放（如果启用）
-            if (autoPlayAudio && audioPlayer != null)
+            // 传统播放器需要在接收完成后手动播放
+            if (!useStreamingPlayer && autoPlayAudio && audioPlayer != null)
             {
                 audioPlayer.Play();
 
@@ -508,6 +568,15 @@ public class RKTTSManager : MonoBehaviour
                 if (audioPlayer.GetDuration() > 0)
                 {
                     StartCoroutine(WaitForAudioComplete(audioPlayer.GetDuration()));
+                }
+            }
+            // 流式播放器会自动处理
+            else if (useStreamingPlayer)
+            {
+                // 标记播放状态
+                if (streamingAudioPlayer != null && streamingAudioPlayer.IsPlaying())
+                {
+                    StartCoroutine(WaitForStreamingComplete());
                 }
             }
         }
@@ -525,6 +594,24 @@ public class RKTTSManager : MonoBehaviour
 
         if (enableDebugLog)
             LoggerManager.Debug("音频播放完成", "TTS");
+    }
+
+    /// <summary>
+    /// 等待流式播放完成
+    /// </summary>
+    private IEnumerator WaitForStreamingComplete()
+    {
+        // 等待流式播放器完成播放
+        while (streamingAudioPlayer != null && streamingAudioPlayer.IsPlaying())
+        {
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        isPlaying = false;
+        OnTTSFinished?.Invoke();
+
+        if (enableDebugLog)
+            LoggerManager.Debug("流式音频播放完成", "TTS");
     }
 
     void OnDestroy()
