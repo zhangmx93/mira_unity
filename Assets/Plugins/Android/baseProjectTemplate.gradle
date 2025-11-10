@@ -22,7 +22,7 @@ allprojects {
         dependencies {
             // Android Gradle Plugin compatible with Gradle 7.5.1
             // For Unity 2022.3, using AGP 7.2.0+
-            classpath 'com.android.tools.build:gradle:7.2.2'
+            classpath 'com.android.tools.build:gradle:8.10.0'
 **BUILD_SCRIPT_DEPS**        }
     }
 

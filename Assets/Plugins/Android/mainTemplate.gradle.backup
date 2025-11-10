@@ -1,24 +1,22 @@
 apply plugin: 'com.android.library'
-apply from: '../shared/keepUnitySymbols.gradle'
 **APPLY_PLUGINS**
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     // SenseFlow dependencies - from private Aliyun repository
-    implementation 'com.senseflow:rkface:1.0.3'
-    implementation 'com.senseflow:rkllm:1.0.7'
-    implementation 'com.senseflow:senseonnx:1.0.3'
+    implementation 'com.senseflow:rkface:1.0.2'
+    implementation 'com.senseflow:rkllm:1.0.5'
+    implementation 'com.senseflow:rktts:1.0.0'
 
     // Test dependency to verify Maven repository connection
     implementation 'com.google.code.gson:gson:2.8.9'
 **DEPS**}
 
 android {
-    ndkVersion "**NDKVERSION**"
-    namespace "com.unity3d.player"
-    ndkPath "**NDKPATH**"
-    compileSdk **APIVERSION**
+	namespace "com.unity3d.player"
+	ndkPath "**NDKPATH**"
+    compileSdkVersion **APIVERSION**
     buildToolsVersion '**BUILDTOOLS**'
 
     compileOptions {
@@ -27,11 +25,9 @@ android {
     }
 
     defaultConfig {
-**DEFAULT_CONFIG_SETUP**
-        minSdk **MINSDK**
-        targetSdk **TARGETSDK**
+        minSdkVersion **MINSDKVERSION**
+        targetSdkVersion **TARGETSDKVERSION**
         ndk {
-            debugSymbolLevel **DEBUGSYMBOLLEVEL**
             abiFilters **ABIFILTERS**
         }
         versionCode **VERSIONCODE**
@@ -39,14 +35,14 @@ android {
         consumerProguardFiles 'proguard-unity.txt'**USER_PROGUARD**
     }
 
-    lint {
+    lintOptions {
         abortOnError false
     }
 
-    androidResources {
+    aaptOptions {
         noCompress = **BUILTIN_NOCOMPRESS** + unityStreamingAssets.tokenize(', ')
         ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
-    }**PACKAGING**
+    }**PACKAGING_OPTIONS**
 }**REPOSITORIES**
 **SOURCE_BUILD_SETUP**
 **EXTERNAL_SOURCES**
