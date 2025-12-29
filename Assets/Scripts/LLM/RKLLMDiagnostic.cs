@@ -41,13 +41,13 @@ public class RKLLMDiagnostic : MonoBehaviour
         }
 
         // 2. 检查 RKLLM 主类
-        CheckClass("com.senseflow.rkllm.SenseRKLlmDetector", "[2/5] RKLLM 主类");
+        CheckClass("com.sensetime.rkllm.SenseRKLlmDetector", "[2/5] RKLLM 主类");
 
         // 3. 检查 ModelConfig 类
-        CheckClass("com.senseflow.rkllm.ModelConfig", "[3/5] ModelConfig 类");
+        CheckClass("com.sensetime.rkllm.ModelConfig", "[3/5] ModelConfig 类");
 
         // 4. 检查 OnResultListener 接口
-        CheckClass("com.senseflow.rkllm.OnResultListener", "[4/5] OnResultListener 接口");
+        CheckClass("com.sensetime.rkllm.OnResultListener", "[4/5] OnResultListener 接口");
 
         // 5. 尝试列出所有加载的类（如果可能）
         try

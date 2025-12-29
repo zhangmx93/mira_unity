@@ -39,30 +39,30 @@
 -keepattributes Signature
 
 # ==========================================
-# ProGuard rules for SenseFlow SDK
+# ProGuard rules for Sensetime SDK
 # ==========================================
 
-# Keep all SenseFlow classes and their members
--keep class com.senseflow.** { *; }
--keep interface com.senseflow.** { *; }
--keep enum com.senseflow.** { *; }
+# Keep all Sensetime classes and their members
+-keep class com.sensetime.** { *; }
+-keep interface com.sensetime.** { *; }
+-keep enum com.sensetime.** { *; }
 
 # Keep RKLLM classes
--keep class com.senseflow.rkllm.** { *; }
--keep interface com.senseflow.rkllm.OnResultListener { *; }
--keep class com.senseflow.rkllm.SenseRKLlmDetector { *; }
--keep class com.senseflow.rkllm.ModelConfig { *; }
+-keep class com.sensetime.rkllm.** { *; }
+-keep interface com.sensetime.rkllm.OnResultListener { *; }
+-keep class com.sensetime.rkllm.SenseRKLlmDetector { *; }
+-keep class com.sensetime.rkllm.ModelConfig { *; }
 
 # Keep RKFace classes
--keep class com.senseflow.rkface.** { *; }
+-keep class com.sensetime.rkface.** { *; }
 
 # Keep RKTTS classes
--keep class com.senseflow.rktts.** { *; }
+-keep class com.sensetime.rktts.** { *; }
 
-# Don't warn about missing SenseFlow classes
--dontwarn com.senseflow.**
+# Don't warn about missing Sensetime classes
+-dontwarn com.sensetime.**
 
-# Keep native methods for SenseFlow SDK
--keepclasseswithmembernames class com.senseflow.** {
+# Keep native methods for Sensetime SDK
+-keepclasseswithmembernames class com.sensetime.** {
     native <methods>;
 }

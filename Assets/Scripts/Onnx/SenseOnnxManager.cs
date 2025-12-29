@@ -45,8 +45,12 @@ public class SenseOnnxManager : MonoBehaviour
     #region Android JNI 对象
 
 #if UNITY_ANDROID && !UNITY_EDITOR
-    private AndroidJavaObject onnxTtsDetector;  // Onnx TTS 检测器
-    private AndroidJavaObject onnxSttDetector;  // Onnx STT 检测器
+    private AndroidJavaObject senseOnnxInstance;  // SenseOnnx 单例
+    private AndroidJavaObject recordAbility;      // 录音能力
+    private AndroidJavaObject ttsAbility;         // TTS 能力
+    private AndroidJavaObject sttAbility;         // STT 能力
+    private AndroidJavaObject kwsAbility;         // KWS 唤醒词识别能力
+    private AndroidJavaObject audioTrack;         // 音频播放器
     private AndroidJavaObject unityActivity;
 #endif
 
@@ -59,16 +63,26 @@ public class SenseOnnxManager : MonoBehaviour
     private bool isSTTReady = false;
     private bool isOnnxTTSReady = false;
     private bool isOnnxSTTReady = false;
+    private bool isRecordReady = false;
+    private bool isKwsReady = false;
+    private bool kwsSwitch = false;  // 唤醒词开关
+    private bool wakeup = false;     // 唤醒状态
 
     #endregion
 
     #region 回调监听器
 
-    // Onnx TTS 数据回调监听器
-    private DataCallbackListener<float[]> onnxTtsDataCallback;
+    // TTS 数据回调监听器
+    private DataCallbackListener<float[]> ttsDataCallback;
 
-    // Onnx STT 数据回调监听器
-    private DataCallbackListener<string> onnxSttDataCallback;
+    // STT 数据回调监听器
+    private DataCallbackListener<string> sttDataCallback;
+
+    // KWS 数据回调监听器
+    private DataCallbackListener<string> kwsDataCallback;
+
+    // Record 数据回调监听器
+    private DataCallbackListener<float[]> recordDataCallback;
 
     #endregion
 
@@ -77,6 +91,9 @@ public class SenseOnnxManager : MonoBehaviour
     public event Action OnSenseOnnxInitialized;
     public event Action<string> OnInitializationError;
     public event Action<string> OnConversationResponse;
+    public event Action<string> OnSttResult;  // STT 识别结果事件
+    public event Action<string> OnKwsDetected;  // KWS 唤醒词检测事件
+    public event Action<float[]> OnTtsAudioChunk;  // TTS 音频块事件
 
     #endregion
 
@@ -159,54 +176,124 @@ public class SenseOnnxManager : MonoBehaviour
         LoggerManager.Info("开始初始化 SenseOnnx 管理器", "SenseOnnx");
 
         // 1. 等待权限授予
-        LoggerManager.Debug("[1/5] 等待权限授予...", "SenseOnnx");
+        LoggerManager.Debug("[1/6] 等待权限授予...", "SenseOnnx");
         yield return StartCoroutine(WaitForPermissions());
 
-        // 2. 初始化 TTS (RKTTSManager)
-        if (enableTTS && ttsManager != null)
+        // 2. 获取 Unity Activity
+        LoggerManager.Debug("[2/6] 获取 Unity Activity...", "SenseOnnx");
+        try
         {
-            LoggerManager.Debug("[2/5] 初始化 TTS (RKTTSManager)...", "SenseOnnx");
-            yield return StartCoroutine(WaitForTTSReady());
+            using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+            {
+                unityActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+            }
+
+            if (unityActivity == null)
+            {
+                LoggerManager.Error("无法获取 Unity Activity", "SenseOnnx");
+                OnInitializationError?.Invoke("无法获取 Unity Activity");
+                yield break;
+            }
+            LoggerManager.Debug("[2/6] ✅ Unity Activity 获取成功", "SenseOnnx");
+        }
+        catch (System.Exception e)
+        {
+            LoggerManager.Error($"获取 Unity Activity 失败: {e.Message}", "SenseOnnx");
+            OnInitializationError?.Invoke($"获取 Unity Activity 失败: {e.Message}");
+            yield break;
+        }
+
+        // 3. 初始化 SenseOnnx 单例
+        LoggerManager.Debug("[3/6] 初始化 SenseOnnx 单例...", "SenseOnnx");
+        try
+        {
+            using (AndroidJavaClass senseOnnxClass = new AndroidJavaClass("com.sensetime.senseonnx.SenseOnnx"))
+            {
+                // 尝试 1: getInstance() 无参
+                try 
+                {
+                    senseOnnxInstance = senseOnnxClass.CallStatic<AndroidJavaObject>("getInstance");
+                }
+                catch (Exception) { senseOnnxInstance = null; }
+
+                // 尝试 2: getInstance(Context)
+                if (senseOnnxInstance == null)
+                {
+                    try
+                    {
+                        senseOnnxInstance = senseOnnxClass.CallStatic<AndroidJavaObject>("getInstance", unityActivity);
+                    }
+                    catch (Exception) { senseOnnxInstance = null; }
+                }
+
+                // 尝试 3: 构造函数 new SenseOnnx(Context)
+                if (senseOnnxInstance == null)
+                {
+                    try
+                    {
+                        senseOnnxInstance = new AndroidJavaObject("com.sensetime.senseonnx.SenseOnnx", unityActivity);
+                    }
+                    catch (Exception) { senseOnnxInstance = null; }
+                }
+
+                 // 尝试 4: 构造函数 new SenseOnnx()
+                if (senseOnnxInstance == null)
+                {
+                    try
+                    {
+                        senseOnnxInstance = new AndroidJavaObject("com.sensetime.senseonnx.SenseOnnx");
+                    }
+                    catch (Exception) { senseOnnxInstance = null; }
+                }
+
+                if (senseOnnxInstance != null)
+                {
+                    // 有些版本可能需要显式 initialize，有些在构造函数或 getInstance 中已做
+                    // 尝试调用 initialize，如果失败则忽略(可能不需要)
+                    try 
+                    {
+                        senseOnnxInstance.Call("initialize", unityActivity);
+                        LoggerManager.Debug("[3/6] 调用 initialize 成功", "SenseOnnx");
+                    }
+                    catch (Exception e) 
+                    {
+                        LoggerManager.Debug($"[3/6] 调用 initialize 异常 (可能不需要): {e.Message}", "SenseOnnx");
+                    }
+                    
+                    LoggerManager.Debug("[3/6] ✅ SenseOnnx 单例初始化成功", "SenseOnnx");
+                }
+                else
+                {
+                    LoggerManager.Error("[3/6] SenseOnnx 单例获取失败 (尝试了 getInstance(), getInstance(ctx), new SenseOnnx(ctx), new SenseOnnx())", "SenseOnnx");
+                    OnInitializationError?.Invoke("SenseOnnx 单例获取失败");
+                    yield break;
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            LoggerManager.Error($"SenseOnnx 单例初始化失败: {e.Message}", "SenseOnnx");
+            OnInitializationError?.Invoke($"SenseOnnx 单例初始化失败: {e.Message}");
+            yield break;
+        }
+
+        // 4. 获取各个能力实例
+        LoggerManager.Debug("[4/6] 获取能力实例...", "SenseOnnx");
+        yield return StartCoroutine(InitializeAbilities());
+
+        // 5. 初始化 AudioTrack (用于 TTS 播放)
+        if (enableOnnxTTS && isTTSReady)
+        {
+            LoggerManager.Debug("[5/6] 初始化 AudioTrack...", "SenseOnnx");
+            yield return StartCoroutine(InitializeAudioTrack());
         }
         else
         {
-            LoggerManager.Debug("[2/5] RK TTS 已禁用或未找到管理器", "SenseOnnx");
+            LoggerManager.Debug("[5/6] AudioTrack 初始化已跳过 (TTS 未启用)", "SenseOnnx");
         }
 
-        // 3. 初始化 Onnx TTS
-        if (enableOnnxTTS)
-        {
-            LoggerManager.Debug("[3/5] 初始化 Onnx TTS...", "SenseOnnx");
-            yield return StartCoroutine(InitializeOnnxTTS());
-        }
-        else
-        {
-            LoggerManager.Debug("[3/5] Onnx TTS 已禁用", "SenseOnnx");
-        }
-
-        // 4. 初始化 STT
-        if (enableSTT && sttManager != null)
-        {
-            LoggerManager.Debug("[4/5] 初始化 STT...", "SenseOnnx");
-            // TODO: 实现 STT 初始化
-        }
-        else
-        {
-            LoggerManager.Debug("[4/5] STT 已禁用或未找到管理器", "SenseOnnx");
-        }
-
-        // 5. 初始化 Onnx STT
-        if (enableSTT)
-        {
-            LoggerManager.Debug("[5/5] 初始化 Onnx STT...", "SenseOnnx");
-            yield return StartCoroutine(InitializeOnnxSTT());
-        }
-        else
-        {
-            LoggerManager.Debug("[5/5] Onnx STT 已禁用", "SenseOnnx");
-        }
-
-        // 设置回调监听器
+        // 6. 设置回调监听器
+        LoggerManager.Debug("[6/6] 设置回调监听器...", "SenseOnnx");
         SetupDataCallbackListeners();
 
         isInitialized = true;
@@ -323,6 +410,64 @@ public class SenseOnnxManager : MonoBehaviour
 
     #endregion
 
+    #region 内部 API - Android 对象访问器 (供回调使用)
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+    /// <summary>
+    /// 获取 AudioTrack 对象 (内部使用)
+    /// </summary>
+    internal AndroidJavaObject GetAudioTrack()
+    {
+        return audioTrack;
+    }
+
+    /// <summary>
+    /// 获取 KwsAbility 对象 (内部使用)
+    /// </summary>
+    internal AndroidJavaObject GetKwsAbility()
+    {
+        return kwsAbility;
+    }
+
+    /// <summary>
+    /// 获取 SttAbility 对象 (内部使用)
+    /// </summary>
+    internal AndroidJavaObject GetSttAbility()
+    {
+        return sttAbility;
+    }
+#endif
+
+    #endregion
+
+    #region 内部 API - 事件触发器 (供回调使用)
+
+    /// <summary>
+    /// 触发 STT 结果事件 (内部使用)
+    /// </summary>
+    internal void RaiseSttResultEvent(string text)
+    {
+        OnSttResult?.Invoke(text);
+    }
+
+    /// <summary>
+    /// 触发 KWS 检测事件 (内部使用)
+    /// </summary>
+    internal void RaiseKwsDetectedEvent(string keyword)
+    {
+        OnKwsDetected?.Invoke(keyword);
+    }
+
+    /// <summary>
+    /// 触发 TTS 音频块事件 (内部使用)
+    /// </summary>
+    internal void RaiseTtsAudioChunkEvent(float[] audioData)
+    {
+        OnTtsAudioChunk?.Invoke(audioData);
+    }
+
+    #endregion
+
     #region 公共 API - TTS 接口
 
     /// <summary>
@@ -360,186 +505,191 @@ public class SenseOnnxManager : MonoBehaviour
 
     #endregion
 
-    #region Onnx TTS/STT 初始化
+    #region Onnx Abilities 初始化
 
     /// <summary>
-    /// 初始化 Onnx TTS
+    /// 初始化各个能力实例
     /// </summary>
-    private IEnumerator InitializeOnnxTTS()
+    private IEnumerator InitializeAbilities()
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
+        // 辅助方法：尝试多种方式获取单例
+        AndroidJavaObject GetAbilityInstance(string className, string abilityName)
+        {
+            AndroidJavaObject instance = null;
+            try
+            {
+                using (AndroidJavaClass cls = new AndroidJavaClass(className))
+                {
+                    // 策略 1: getInstance()
+                    try { instance = cls.CallStatic<AndroidJavaObject>("getInstance"); }
+                    catch (Exception) { }
+
+                    // 策略 2: Kotlin Object INSTANCE 字段
+                    if (instance == null)
+                    {
+                        try { instance = cls.GetStatic<AndroidJavaObject>("INSTANCE"); }
+                        catch (Exception) { }
+                    }
+
+                    // 策略 3: Companion.getInstance()
+                    if (instance == null)
+                    {
+                        try 
+                        {
+                            using (AndroidJavaObject companion = cls.GetStatic<AndroidJavaObject>("Companion"))
+                            {
+                                if (companion != null) instance = companion.Call<AndroidJavaObject>("getInstance");
+                            }
+                        }
+                        catch (Exception) { }
+                    }
+
+                    // 策略 4: new className()
+                    if (instance == null)
+                    {
+                        try { instance = new AndroidJavaObject(className); }
+                        catch (Exception) { }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggerManager.Warning($"[API适配] 无法加载类 {abilityName} ({className}): {ex.Message}", "SenseOnnx");
+            }
+
+            if (instance != null)
+                LoggerManager.Debug($"✅ {abilityName} 获取成功", "SenseOnnx");
+            else
+                LoggerManager.Warning($"❌ {abilityName} 获取失败 (尝试了 getInstance/INSTANCE/Companion/new)", "SenseOnnx");
+
+            return instance;
+        }
+
         try
         {
-            LoggerManager.Debug("开始初始化 Onnx TTS...", "SenseOnnx");
+            // 确保使用正确的包名 com.sensetime
+            string pkgPrefix = "com.sensetime.senseonnx";
 
-            // 步骤 1: 加载 senseonnx native 库
-            LoggerManager.Debug("[1/4] 加载 senseonnx native 库...", "SenseOnnx");
-            try
+            // 获取 RecordAbility 实例
+            if (enableSTT)
             {
-                using (AndroidJavaClass systemClass = new AndroidJavaClass("java.lang.System"))
-                {
-                    systemClass.CallStatic("loadLibrary", "senseonnx");
-                    LoggerManager.Debug("[1/4] ✅ senseonnx 库加载成功", "SenseOnnx");
-                }
-            }
-            catch (System.Exception e)
-            {
-                LoggerManager.Warning($"加载 senseonnx 库失败（可能已加载）: {e.Message}", "SenseOnnx");
+                LoggerManager.Debug("获取 RecordAbility 实例...", "SenseOnnx");
+                recordAbility = GetAbilityInstance($"{pkgPrefix}.audio.RecordAbility", "RecordAbility");
+                if (recordAbility != null) isRecordReady = true;
             }
 
-            // 步骤 2: 获取 Unity Activity
-            LoggerManager.Debug("[2/4] 获取 Unity Activity...", "SenseOnnx");
-            using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+            // 获取 TtsAbility 实例
+            if (enableOnnxTTS)
             {
-                unityActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+                LoggerManager.Debug("获取 TtsAbility 实例...", "SenseOnnx");
+                ttsAbility = GetAbilityInstance($"{pkgPrefix}.tts.TtsAbility", "TtsAbility");
+                if (ttsAbility != null) isTTSReady = true;
             }
 
-            if (unityActivity == null)
+            // 获取 SttAbility 实例
+            if (enableSTT)
             {
-                LoggerManager.Error("[2/4] 无法获取 Unity Activity", "SenseOnnx");
-                yield break;
-            }
-            LoggerManager.Debug("[2/4] ✅ Unity Activity 获取成功", "SenseOnnx");
-
-            // 步骤 3: 创建 Onnx TTS 检测器实例
-            LoggerManager.Debug("[3/4] 创建 Onnx TTS 检测器实例...", "SenseOnnx");
-
-            // 尝试多种构造函数
-            try
-            {
-                // 尝试 1: 使用 Application 参数
-                AndroidJavaObject application = unityActivity.Call<AndroidJavaObject>("getApplication");
-                onnxTtsDetector = new AndroidJavaObject("com.senseflow.senseonnx.SenseOnnxTtsDetector", application);
-                LoggerManager.Debug("[3/4] ✅ Onnx TTS 检测器创建成功 (Application)", "SenseOnnx");
-            }
-            catch (System.Exception e1)
-            {
-                LoggerManager.Warning($"构造函数 (Application) 失败: {e1.Message}", "SenseOnnx");
-
-                // 尝试 2: 使用 Activity 参数
-                try
-                {
-                    onnxTtsDetector = new AndroidJavaObject("com.senseflow.senseonnx.SenseOnnxTtsDetector", unityActivity);
-                    LoggerManager.Debug("[3/4] ✅ Onnx TTS 检测器创建成功 (Activity)", "SenseOnnx");
-                }
-                catch (System.Exception e2)
-                {
-                    LoggerManager.Error($"所有构造方法都失败", "SenseOnnx");
-                    LoggerManager.Error($"  - Application: {e1.Message}", "SenseOnnx");
-                    LoggerManager.Error($"  - Activity: {e2.Message}", "SenseOnnx");
-                    yield break;
-                }
+                LoggerManager.Debug("获取 SttAbility 实例...", "SenseOnnx");
+                sttAbility = GetAbilityInstance($"{pkgPrefix}.stt.SttAbility", "SttAbility");
+                if (sttAbility != null) isSTTReady = true;
             }
 
-            if (onnxTtsDetector == null)
+            // 获取 KwsAbility 实例
+            if (enableSTT)
             {
-                LoggerManager.Error("[3/4] Onnx TTS 检测器创建失败", "SenseOnnx");
-                yield break;
+                LoggerManager.Debug("获取 KwsAbility 实例...", "SenseOnnx");
+                kwsAbility = GetAbilityInstance($"{pkgPrefix}.kws.KwsAbility", "KwsAbility");
+                if (kwsAbility != null) isKwsReady = true;
             }
 
-            // 步骤 4: 初始化并启动
-            LoggerManager.Debug("[4/4] 初始化并启动 Onnx TTS...", "SenseOnnx");
-            onnxTtsDetector.Call("initialize");
-            onnxTtsDetector.Call("start");
-            isOnnxTTSReady = true;
-            LoggerManager.Info("✅ Onnx TTS 初始化完成", "SenseOnnx");
+            LoggerManager.Info("✅ 所有能力实例获取流程完成", "SenseOnnx");
         }
         catch (System.Exception e)
         {
-            LoggerManager.Error($"Onnx TTS 初始化失败: {e.Message}", "SenseOnnx");
+            LoggerManager.Error($"获取能力实例失败: {e.Message}", "SenseOnnx");
         }
 #endif
         yield return null;
     }
 
     /// <summary>
-    /// 初始化 Onnx STT
+    /// 初始化 AudioTrack (用于 TTS 播放)
     /// </summary>
-    private IEnumerator InitializeOnnxSTT()
+    private IEnumerator InitializeAudioTrack()
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
         try
         {
-            LoggerManager.Debug("开始初始化 Onnx STT...", "SenseOnnx");
-
-            // 步骤 1: 加载 senseonnx native 库（如果还没加载）
-            LoggerManager.Debug("[1/4] 确保 senseonnx native 库已加载...", "SenseOnnx");
-            try
+            if (ttsAbility == null)
             {
-                using (AndroidJavaClass systemClass = new AndroidJavaClass("java.lang.System"))
-                {
-                    systemClass.CallStatic("loadLibrary", "senseonnx");
-                    LoggerManager.Debug("[1/4] ✅ senseonnx 库加载成功", "SenseOnnx");
-                }
-            }
-            catch (System.Exception e)
-            {
-                LoggerManager.Warning($"加载 senseonnx 库失败（可能已加载）: {e.Message}", "SenseOnnx");
-            }
-
-            // 步骤 2: 获取 Unity Activity（如果还没有）
-            LoggerManager.Debug("[2/4] 获取 Unity Activity...", "SenseOnnx");
-            if (unityActivity == null)
-            {
-                using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
-                {
-                    unityActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
-                }
-            }
-
-            if (unityActivity == null)
-            {
-                LoggerManager.Error("[2/4] 无法获取 Unity Activity", "SenseOnnx");
-                yield break;
-            }
-            LoggerManager.Debug("[2/4] ✅ Unity Activity 获取成功", "SenseOnnx");
-
-            // 步骤 3: 创建 Onnx STT 检测器实例
-            LoggerManager.Debug("[3/4] 创建 Onnx STT 检测器实例...", "SenseOnnx");
-
-            // 尝试多种构造函数
-            try
-            {
-                // 尝试 1: 使用 Application 参数
-                AndroidJavaObject application = unityActivity.Call<AndroidJavaObject>("getApplication");
-                onnxSttDetector = new AndroidJavaObject("com.senseflow.senseonnx.SenseOnnxSttDetector", application);
-                LoggerManager.Debug("[3/4] ✅ Onnx STT 检测器创建成功 (Application)", "SenseOnnx");
-            }
-            catch (System.Exception e1)
-            {
-                LoggerManager.Warning($"构造函数 (Application) 失败: {e1.Message}", "SenseOnnx");
-
-                // 尝试 2: 使用 Activity 参数
-                try
-                {
-                    onnxSttDetector = new AndroidJavaObject("com.senseflow.senseonnx.SenseOnnxSttDetector", unityActivity);
-                    LoggerManager.Debug("[3/4] ✅ Onnx STT 检测器创建成功 (Activity)", "SenseOnnx");
-                }
-                catch (System.Exception e2)
-                {
-                    LoggerManager.Error($"所有构造方法都失败", "SenseOnnx");
-                    LoggerManager.Error($"  - Application: {e1.Message}", "SenseOnnx");
-                    LoggerManager.Error($"  - Activity: {e2.Message}", "SenseOnnx");
-                    yield break;
-                }
-            }
-
-            if (onnxSttDetector == null)
-            {
-                LoggerManager.Error("[3/4] Onnx STT 检测器创建失败", "SenseOnnx");
+                LoggerManager.Warning("TtsAbility 未就绪，无法初始化 AudioTrack", "SenseOnnx");
                 yield break;
             }
 
-            // 步骤 4: 初始化并启动
-            LoggerManager.Debug("[4/4] 初始化并启动 Onnx STT...", "SenseOnnx");
-            onnxSttDetector.Call("initialize");
-            onnxSttDetector.Call("start");
-            isOnnxSTTReady = true;
-            LoggerManager.Info("✅ Onnx STT 初始化完成", "SenseOnnx");
+            // 获取采样率
+            int sampleRate = ttsAbility.Call<int>("getSampleRate");
+            LoggerManager.Debug($"TTS 采样率: {sampleRate}", "SenseOnnx");
+
+            // 获取最小缓冲区大小
+            using (AndroidJavaClass audioTrackClass = new AndroidJavaClass("android.media.AudioTrack"))
+            using (AndroidJavaClass audioFormatClass = new AndroidJavaClass("android.media.AudioFormat"))
+            {
+                int channelConfig = audioFormatClass.GetStatic<int>("CHANNEL_OUT_MONO");
+                int audioFormat = audioFormatClass.GetStatic<int>("ENCODING_PCM_FLOAT");
+                
+                int bufferSize = audioTrackClass.CallStatic<int>("getMinBufferSize", 
+                    sampleRate, channelConfig, audioFormat);
+                
+                LoggerManager.Debug($"AudioTrack 缓冲区大小: {bufferSize}", "SenseOnnx");
+
+                // 创建 AudioAttributes
+                using (AndroidJavaObject audioAttributesBuilder = new AndroidJavaObject("android.media.AudioAttributes$Builder"))
+                using (AndroidJavaClass audioAttributesClass = new AndroidJavaClass("android.media.AudioAttributes"))
+                {
+                    int contentTypeSpeech = audioAttributesClass.GetStatic<int>("CONTENT_TYPE_SPEECH");
+                    int usageMedia = audioAttributesClass.GetStatic<int>("USAGE_MEDIA");
+                    
+                    AndroidJavaObject audioAttributes = audioAttributesBuilder
+                        .Call<AndroidJavaObject>("setContentType", contentTypeSpeech)
+                        .Call<AndroidJavaObject>("setUsage", usageMedia)
+                        .Call<AndroidJavaObject>("build");
+
+                    // 创建 AudioFormat
+                    using (AndroidJavaObject audioFormatBuilder = new AndroidJavaObject("android.media.AudioFormat$Builder"))
+                    {
+                        AndroidJavaObject format = audioFormatBuilder
+                            .Call<AndroidJavaObject>("setEncoding", audioFormat)
+                            .Call<AndroidJavaObject>("setChannelMask", channelConfig)
+                            .Call<AndroidJavaObject>("setSampleRate", sampleRate)
+                            .Call<AndroidJavaObject>("build");
+
+                        // 创建 AudioTrack
+                        using (AndroidJavaClass audioManagerClass = new AndroidJavaClass("android.media.AudioManager"))
+                        {
+                            int modeStream = audioTrackClass.GetStatic<int>("MODE_STREAM");
+                            int sessionIdGenerate = audioManagerClass.GetStatic<int>("AUDIO_SESSION_ID_GENERATE");
+
+                            audioTrack = new AndroidJavaObject("android.media.AudioTrack",
+                                audioAttributes, format, bufferSize, modeStream, sessionIdGenerate);
+
+                            if (audioTrack != null)
+                            {
+                                audioTrack.Call("play");
+                                LoggerManager.Info("✅ AudioTrack 初始化成功并开始播放", "SenseOnnx");
+                            }
+                            else
+                            {
+                                LoggerManager.Error("AudioTrack 创建失败", "SenseOnnx");
+                            }
+                        }
+                    }
+                }
+            }
         }
         catch (System.Exception e)
         {
-            LoggerManager.Error($"Onnx STT 初始化失败: {e.Message}", "SenseOnnx");
+            LoggerManager.Error($"AudioTrack 初始化失败: {e.Message}", "SenseOnnx");
         }
 #endif
         yield return null;
@@ -551,36 +701,67 @@ public class SenseOnnxManager : MonoBehaviour
     private void SetupDataCallbackListeners()
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
-        // 设置 Onnx TTS 回调监听器
-        if (isOnnxTTSReady && onnxTtsDetector != null)
+        // 设置 TTS 回调监听器
+        if (isTTSReady && ttsAbility != null)
         {
-            onnxTtsDataCallback = new OnnxTtsDataCallback(this);
-            // 根据你的 Android SDK，设置监听器的方法名可能不同
-            // 这里假设有 setDataCallbackListener 方法
+            ttsDataCallback = new TtsDataCallback(this);
             try
             {
-                onnxTtsDetector.Call("setDataCallbackListener", new OnnxTtsCallbackProxy(onnxTtsDataCallback));
-                LoggerManager.Debug("✅ Onnx TTS 回调监听器已设置", "SenseOnnx");
+                TtsCallbackProxy ttsProxy = new TtsCallbackProxy(ttsDataCallback);
+                ttsAbility.Call("setDataCallbackListener", ttsProxy);
+                LoggerManager.Debug("✅ TTS 回调监听器已设置", "SenseOnnx");
             }
             catch (System.Exception e)
             {
-                LoggerManager.Warning($"设置 Onnx TTS 回调失败: {e.Message}", "SenseOnnx");
+                LoggerManager.Warning($"设置 TTS 回调失败: {e.Message}", "SenseOnnx");
             }
         }
 
-        // 设置 Onnx STT 回调监听器
-        if (isOnnxSTTReady && onnxSttDetector != null)
+        // 设置 STT 回调监听器
+        if (isSTTReady && sttAbility != null)
         {
-            onnxSttDataCallback = new OnnxSttDataCallback(this);
-            // 根据你的 Android SDK，设置监听器的方法名可能不同
+            sttDataCallback = new SttDataCallback(this);
             try
             {
-                onnxSttDetector.Call("setDataCallbackListener", new OnnxSttCallbackProxy(onnxSttDataCallback));
-                LoggerManager.Debug("✅ Onnx STT 回调监听器已设置", "SenseOnnx");
+                SttCallbackProxy sttProxy = new SttCallbackProxy(sttDataCallback);
+                sttAbility.Call("setDataCallbackListener", sttProxy);
+                LoggerManager.Debug("✅ STT 回调监听器已设置", "SenseOnnx");
             }
             catch (System.Exception e)
             {
-                LoggerManager.Warning($"设置 Onnx STT 回调失败: {e.Message}", "SenseOnnx");
+                LoggerManager.Warning($"设置 STT 回调失败: {e.Message}", "SenseOnnx");
+            }
+        }
+
+        // 设置 KWS 回调监听器
+        if (isKwsReady && kwsAbility != null)
+        {
+            kwsDataCallback = new KwsDataCallback(this);
+            try
+            {
+                KwsCallbackProxy kwsProxy = new KwsCallbackProxy(kwsDataCallback);
+                kwsAbility.Call("setDataCallbackListener", kwsProxy);
+                LoggerManager.Debug("✅ KWS 回调监听器已设置", "SenseOnnx");
+            }
+            catch (System.Exception e)
+            {
+                LoggerManager.Warning($"设置 KWS 回调失败: {e.Message}", "SenseOnnx");
+            }
+        }
+
+        // 设置 Record 回调监听器
+        if (isRecordReady && recordAbility != null)
+        {
+            recordDataCallback = new RecordDataCallback(this);
+            try
+            {
+                RecordCallbackProxy recordProxy = new RecordCallbackProxy(recordDataCallback);
+                recordAbility.Call("setDataCallbackListener", recordProxy);
+                LoggerManager.Debug("✅ Record 回调监听器已设置", "SenseOnnx");
+            }
+            catch (System.Exception e)
+            {
+                LoggerManager.Warning($"设置 Record 回调失败: {e.Message}", "SenseOnnx");
             }
         }
 #endif
@@ -588,104 +769,227 @@ public class SenseOnnxManager : MonoBehaviour
 
     #endregion
 
-    #region 公共 API - Onnx TTS 接口
+    #region 公共 API - TTS 接口
 
     /// <summary>
-    /// Onnx TTS 文字转语音
+    /// TTS 文字转语音 (使用 TtsAbility)
     /// </summary>
-    public void OnnxTtsGenerate(string text)
+    public void TtsGenerate(string text)
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
-        if (!isOnnxTTSReady || onnxTtsDetector == null)
+        if (!isTTSReady || ttsAbility == null)
         {
-            LoggerManager.Warning("Onnx TTS 未就绪", "SenseOnnx");
+            LoggerManager.Warning("TTS 未就绪", "SenseOnnx");
             return;
         }
 
         try
         {
-            LoggerManager.Debug($"Onnx TTS 生成: {text}", "SenseOnnx");
-            onnxTtsDetector.Call("generate", text);
+            LoggerManager.Debug($"TTS 生成: {text}", "SenseOnnx");
+            
+            // 暂停、清空并重新播放 AudioTrack
+            if (audioTrack != null)
+            {
+                audioTrack.Call("pause");
+                audioTrack.Call("flush");
+                audioTrack.Call("play");
+            }
+            
+            // 输入文本到 TTS
+            ttsAbility.Call("inputData", text);
         }
         catch (System.Exception e)
         {
-            LoggerManager.Error($"Onnx TTS 生成失败: {e.Message}", "SenseOnnx");
+            LoggerManager.Error($"TTS 生成失败: {e.Message}", "SenseOnnx");
         }
 #else
-        LoggerManager.Warning($"[模拟] Onnx TTS 生成: {text}", "SenseOnnx");
+        LoggerManager.Warning($"[模拟] TTS 生成: {text}", "SenseOnnx");
 #endif
     }
 
     /// <summary>
-    /// 检查 Onnx TTS 是否就绪
+    /// 检查 TTS 是否就绪
     /// </summary>
-    public bool IsOnnxTTSReady()
+    public bool IsTtsAbilityReady()
     {
-        return isOnnxTTSReady;
+        return isTTSReady;
     }
 
     #endregion
 
-    #region 公共 API - Onnx STT 接口
+    #region 公共 API - STT 接口
 
     /// <summary>
-    /// Onnx STT 开始识别
+    /// STT 开始识别 (使用 SttAbility)
     /// </summary>
-    public void OnnxSttStartRecognition()
+    public void SttStartRecognition()
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
-        if (!isOnnxSTTReady || onnxSttDetector == null)
+        if (!isSTTReady || sttAbility == null)
         {
-            LoggerManager.Warning("Onnx STT 未就绪", "SenseOnnx");
+            LoggerManager.Warning("STT 未就绪", "SenseOnnx");
             return;
         }
 
         try
         {
-            LoggerManager.Debug("Onnx STT 开始识别", "SenseOnnx");
-            onnxSttDetector.Call("startRecognition");
+            LoggerManager.Debug("STT 开始识别", "SenseOnnx");
+            // STT 通过 Record 的回调自动接收数据
+            // 这里可以设置 STT 的状态或参数
         }
         catch (System.Exception e)
         {
-            LoggerManager.Error($"Onnx STT 开始识别失败: {e.Message}", "SenseOnnx");
+            LoggerManager.Error($"STT 开始识别失败: {e.Message}", "SenseOnnx");
         }
 #else
-        LoggerManager.Warning("[模拟] Onnx STT 开始识别", "SenseOnnx");
+        LoggerManager.Warning("[模拟] STT 开始识别", "SenseOnnx");
 #endif
     }
 
     /// <summary>
-    /// Onnx STT 停止识别
+    /// 检查 STT 是否就绪
     /// </summary>
-    public void OnnxSttStopRecognition()
+    public bool IsSttAbilityReady()
+    {
+        return isSTTReady;
+    }
+
+    #endregion
+
+    #region 公共 API - KWS 接口
+
+    /// <summary>
+    /// 设置 KWS 唤醒词开关
+    /// </summary>
+    public void SetKwsSwitch(bool enabled)
+    {
+        kwsSwitch = enabled;
+        LoggerManager.Debug($"KWS 开关设置为: {enabled}", "SenseOnnx");
+        
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (senseOnnxInstance != null)
+        {
+            try
+            {
+                senseOnnxInstance.Call("setKwsSwitch", enabled);
+            }
+            catch (System.Exception e)
+            {
+                LoggerManager.Warning($"设置 KWS 开关失败: {e.Message}", "SenseOnnx");
+            }
+        }
+#endif
+    }
+
+    /// <summary>
+    /// 获取 KWS 唤醒词开关状态
+    /// </summary>
+    public bool GetKwsSwitch()
+    {
+        return kwsSwitch;
+    }
+
+    /// <summary>
+    /// 设置唤醒状态
+    /// </summary>
+    public void SetWakeup(bool isWakeup)
+    {
+        wakeup = isWakeup;
+        LoggerManager.Debug($"唤醒状态设置为: {isWakeup}", "SenseOnnx");
+        
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (senseOnnxInstance != null)
+        {
+            try
+            {
+                senseOnnxInstance.Call("setWakeup", isWakeup);
+            }
+            catch (System.Exception e)
+            {
+                LoggerManager.Warning($"设置唤醒状态失败: {e.Message}", "SenseOnnx");
+            }
+        }
+#endif
+    }
+
+    /// <summary>
+    /// 获取唤醒状态
+    /// </summary>
+    public bool GetWakeup()
+    {
+        return wakeup;
+    }
+
+    /// <summary>
+    /// 检查 KWS 是否就绪
+    /// </summary>
+    public bool IsKwsReady()
+    {
+        return isKwsReady;
+    }
+
+    #endregion
+
+    #region 公共 API - Record 接口
+
+    /// <summary>
+    /// 开始录音
+    /// </summary>
+    public void StartRecord()
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
-        if (!isOnnxSTTReady || onnxSttDetector == null)
+        if (!isRecordReady || recordAbility == null)
         {
-            LoggerManager.Warning("Onnx STT 未就绪", "SenseOnnx");
+            LoggerManager.Warning("Record 未就绪", "SenseOnnx");
             return;
         }
 
         try
         {
-            LoggerManager.Debug("Onnx STT 停止识别", "SenseOnnx");
-            onnxSttDetector.Call("stopRecognition");
+            LoggerManager.Debug("开始录音", "SenseOnnx");
+            recordAbility.Call("start");
         }
         catch (System.Exception e)
         {
-            LoggerManager.Error($"Onnx STT 停止识别失败: {e.Message}", "SenseOnnx");
+            LoggerManager.Error($"开始录音失败: {e.Message}", "SenseOnnx");
         }
 #else
-        LoggerManager.Warning("[模拟] Onnx STT 停止识别", "SenseOnnx");
+        LoggerManager.Warning("[模拟] 开始录音", "SenseOnnx");
 #endif
     }
 
     /// <summary>
-    /// 检查 Onnx STT 是否就绪
+    /// 停止录音
     /// </summary>
-    public bool IsOnnxSTTReady()
+    public void StopRecord()
     {
-        return isOnnxSTTReady;
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (!isRecordReady || recordAbility == null)
+        {
+            LoggerManager.Warning("Record 未就绪", "SenseOnnx");
+            return;
+        }
+
+        try
+        {
+            LoggerManager.Debug("停止录音", "SenseOnnx");
+            recordAbility.Call("stop");
+        }
+        catch (System.Exception e)
+        {
+            LoggerManager.Error($"停止录音失败: {e.Message}", "SenseOnnx");
+        }
+#else
+        LoggerManager.Warning("[模拟] 停止录音", "SenseOnnx");
+#endif
+    }
+
+    /// <summary>
+    /// 检查 Record 是否就绪
+    /// </summary>
+    public bool IsRecordReady()
+    {
+        return isRecordReady;
     }
 
     #endregion
@@ -718,9 +1022,9 @@ public class SenseOnnxManager : MonoBehaviour
         // 3. 将响应转为语音
 
         // 目前简化实现：直接将消息转为语音
-        if (IsOnnxTTSReady())
+        if (IsTtsAbilityReady())
         {
-            OnnxTtsGenerate(message);
+            TtsGenerate(message);
         }
         else if (IsTTSReady())
         {
@@ -765,10 +1069,10 @@ public class SenseOnnxManager : MonoBehaviour
             StopTTS();
         }
 
-        // 停止 Onnx STT
-        if (IsOnnxSTTReady())
+        // 停止录音
+        if (IsRecordReady())
         {
-            OnnxSttStopRecognition();
+            StopRecord();
         }
 
         isProcessing = false;
@@ -797,17 +1101,17 @@ public class SenseOnnxManager : MonoBehaviour
         sb.AppendLine($"已就绪: {IsTTSReady()}");
         sb.AppendLine($"正在播放: {IsTTSPlaying()}");
         sb.AppendLine();
-        sb.AppendLine("--- Onnx TTS ---");
+        sb.AppendLine("--- TTS Ability ---");
         sb.AppendLine($"已启用: {enableOnnxTTS}");
-        sb.AppendLine($"已就绪: {IsOnnxTTSReady()}");
+        sb.AppendLine($"已就绪: {IsTtsAbilityReady()}");
         sb.AppendLine();
         sb.AppendLine("--- STT ---");
         sb.AppendLine($"已启用: {enableSTT}");
         sb.AppendLine($"已就绪: {IsSTTReady()}");
         sb.AppendLine();
-        sb.AppendLine("--- Onnx STT ---");
+        sb.AppendLine("--- STT Ability ---");
         sb.AppendLine($"已启用: {enableSTT}");
-        sb.AppendLine($"已就绪: {IsOnnxSTTReady()}");
+        sb.AppendLine($"已就绪: {IsSttAbilityReady()}");
 
         return sb.ToString();
     }
@@ -821,51 +1125,95 @@ public class SenseOnnxManager : MonoBehaviour
     #endregion
 }
 
-#region Onnx TTS 回调实现
+#region TTS 回调实现
 
 /// <summary>
-/// Onnx TTS 数据回调实现
+/// TTS 数据回调实现
 /// </summary>
-public class OnnxTtsDataCallback : DataCallbackListener<float[]>
+public class TtsDataCallback : DataCallbackListener<float[]>
 {
     private SenseOnnxManager manager;
 
-    public OnnxTtsDataCallback(SenseOnnxManager manager)
+    public TtsDataCallback(SenseOnnxManager manager)
     {
         this.manager = manager;
     }
 
     public void OnDataChunkCallback(float[] data)
     {
-        LoggerManager.Debug($"Onnx TTS 数据块回调: {data?.Length ?? 0} 个采样", "SenseOnnx");
-        // 在这里处理 TTS 流式数据块
-        // 例如：播放音频、保存到缓冲区等
+        LoggerManager.Debug($"TTS 数据块回调: {data?.Length ?? 0} 个采样", "SenseOnnx");
+        
+#if UNITY_ANDROID && !UNITY_EDITOR
+        // 将音频数据写入 AudioTrack 播放
+        if (manager != null && data != null && data.Length > 0)
+        {
+            try
+            {
+                AndroidJavaObject audioTrack = manager.GetAudioTrack();
+                if (audioTrack != null)
+                {
+                    using (AndroidJavaClass audioTrackClass = new AndroidJavaClass("android.media.AudioTrack"))
+                    {
+                        int writeBlocking = audioTrackClass.GetStatic<int>("WRITE_BLOCKING");
+                        audioTrack.Call<int>("write", data, 0, data.Length, writeBlocking);
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                LoggerManager.Error($"写入 AudioTrack 失败: {e.Message}", "SenseOnnx");
+            }
+        }
+#endif
+        
+        // 触发事件
+        if (manager != null)
+        {
+            manager.RaiseTtsAudioChunkEvent(data);
+        }
     }
 
     public void OnDataFinishCallback(float[] data)
     {
-        LoggerManager.Debug($"Onnx TTS 数据完成回调: {data?.Length ?? 0} 个采样", "SenseOnnx");
-        // 在这里处理 TTS 最终数据
-        // 例如：播放完整音频、通知完成等
+        LoggerManager.Debug($"TTS 数据完成回调: {data?.Length ?? 0} 个采样", "SenseOnnx");
+        
+#if UNITY_ANDROID && !UNITY_EDITOR
+        // 停止 AudioTrack
+        if (manager != null)
+        {
+            try
+            {
+                AndroidJavaObject audioTrack = manager.GetAudioTrack();
+                if (audioTrack != null)
+                {
+                    audioTrack.Call("stop");
+                }
+            }
+            catch (System.Exception e)
+            {
+                LoggerManager.Error($"停止 AudioTrack 失败: {e.Message}", "SenseOnnx");
+            }
+        }
+#endif
     }
 }
 
 /// <summary>
-/// Onnx TTS Android 回调代理
+/// TTS Android 回调代理
 /// </summary>
 #if UNITY_ANDROID && !UNITY_EDITOR
-public class OnnxTtsCallbackProxy : AndroidJavaProxy
+public class TtsCallbackProxy : AndroidJavaProxy
 {
     private DataCallbackListener<float[]> callback;
 
-    public OnnxTtsCallbackProxy(DataCallbackListener<float[]> callback)
-        : base("com.senseflow.senseonnx.DataCallbackListener")
+    public TtsCallbackProxy(DataCallbackListener<float[]> callback)
+        : base("com.sensetime.senseonnx.DataCallbackListener")
     {
         this.callback = callback;
     }
 
     // Android 回调方法
-    public void onDataChunkCallback(float[] data)
+    public void onChunk(float[] data)
     {
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {
@@ -873,7 +1221,7 @@ public class OnnxTtsCallbackProxy : AndroidJavaProxy
         });
     }
 
-    public void onDataFinishCallback(float[] data)
+    public void onFinish(float[] data)
     {
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {
@@ -885,56 +1233,64 @@ public class OnnxTtsCallbackProxy : AndroidJavaProxy
 
 #endregion
 
-#region Onnx STT 回调实现
+#region STT 回调实现
 
 /// <summary>
-/// Onnx STT 数据回调实现
+/// STT 数据回调实现
 /// </summary>
-public class OnnxSttDataCallback : DataCallbackListener<string>
+public class SttDataCallback : DataCallbackListener<string>
 {
     private SenseOnnxManager manager;
 
-    public OnnxSttDataCallback(SenseOnnxManager manager)
+    public SttDataCallback(SenseOnnxManager manager)
     {
         this.manager = manager;
     }
 
     public void OnDataChunkCallback(string data)
     {
-        LoggerManager.Debug($"Onnx STT 数据块回调: {data}", "SenseOnnx");
-        // 在这里处理 STT 流式识别结果
-        // 例如：更新 UI 显示中间结果
+        LoggerManager.Debug($"STT 数据块回调: {data}", "SenseOnnx");
+        // 触发事件 - 中间识别结果
+        if (manager != null)
+        {
+            manager.RaiseSttResultEvent(data);
+        }
     }
 
     public void OnDataFinishCallback(string data)
     {
-        LoggerManager.Debug($"Onnx STT 数据完成回调: {data}", "SenseOnnx");
+        LoggerManager.Debug($"STT 数据完成回调: {data}", "SenseOnnx");
 
-        // 在这里处理 STT 最终识别结果
-        // 例如：将识别结果传给 TTS 进行语音合成
-        if (manager != null && manager.IsOnnxTTSReady())
+        // 触发事件 - 最终识别结果
+        if (manager != null)
         {
-            manager.OnnxTtsGenerate(data);
+            manager.RaiseSttResultEvent(data);
+        }
+        
+        // 将识别结果传给 TTS 进行语音合成 (如果需要)
+        if (manager != null && manager.IsTtsAbilityReady() && !string.IsNullOrEmpty(data))
+        {
+            manager.TtsGenerate(data);
         }
     }
 }
 
 /// <summary>
-/// Onnx STT Android 回调代理
+/// STT Android 回调代理
 /// </summary>
 #if UNITY_ANDROID && !UNITY_EDITOR
-public class OnnxSttCallbackProxy : AndroidJavaProxy
+public class SttCallbackProxy : AndroidJavaProxy
 {
     private DataCallbackListener<string> callback;
 
-    public OnnxSttCallbackProxy(DataCallbackListener<string> callback)
-        : base("com.senseflow.senseonnx.DataCallbackListener")
+    public SttCallbackProxy(DataCallbackListener<string> callback)
+        : base("com.sensetime.senseonnx.DataCallbackListener")
     {
         this.callback = callback;
     }
 
     // Android 回调方法
-    public void onDataChunkCallback(string data)
+    public void onChunk(string data)
     {
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {
@@ -942,7 +1298,178 @@ public class OnnxSttCallbackProxy : AndroidJavaProxy
         });
     }
 
-    public void onDataFinishCallback(string data)
+    public void onFinish(string data)
+    {
+        UnityMainThreadDispatcher.Instance().Enqueue(() =>
+        {
+            callback.OnDataFinishCallback(data);
+        });
+    }
+}
+#endif
+
+#endregion
+
+#region KWS 回调实现
+
+/// <summary>
+/// KWS 数据回调实现
+/// </summary>
+public class KwsDataCallback : DataCallbackListener<string>
+{
+    private SenseOnnxManager manager;
+
+    public KwsDataCallback(SenseOnnxManager manager)
+    {
+        this.manager = manager;
+    }
+
+    public void OnDataChunkCallback(string data)
+    {
+        // KWS 通常只在检测到唤醒词时触发
+    }
+
+    public void OnDataFinishCallback(string data)
+    {
+        LoggerManager.Info($"KWS 检测到唤醒词: {data}", "SenseOnnx");
+        
+        // 设置唤醒状态
+        if (manager != null)
+        {
+            manager.SetWakeup(true);
+        }
+        
+        // 触发事件
+        if (manager != null)
+        {
+            manager.RaiseKwsDetectedEvent(data);
+        }
+    }
+}
+
+/// <summary>
+/// KWS Android 回调代理
+/// </summary>
+#if UNITY_ANDROID && !UNITY_EDITOR
+public class KwsCallbackProxy : AndroidJavaProxy
+{
+    private DataCallbackListener<string> callback;
+
+    public KwsCallbackProxy(DataCallbackListener<string> callback)
+        : base("com.sensetime.senseonnx.DataCallbackListener")
+    {
+        this.callback = callback;
+    }
+
+    // Android 回调方法
+    public void onChunk(string data)
+    {
+        UnityMainThreadDispatcher.Instance().Enqueue(() =>
+        {
+            callback.OnDataChunkCallback(data);
+        });
+    }
+
+    public void onFinish(string data)
+    {
+        UnityMainThreadDispatcher.Instance().Enqueue(() =>
+        {
+            callback.OnDataFinishCallback(data);
+        });
+    }
+}
+#endif
+
+#endregion
+
+#region Record 回调实现
+
+/// <summary>
+/// Record 数据回调实现
+/// </summary>
+public class RecordDataCallback : DataCallbackListener<float[]>
+{
+    private SenseOnnxManager manager;
+
+    public RecordDataCallback(SenseOnnxManager manager)
+    {
+        this.manager = manager;
+    }
+
+    public void OnDataChunkCallback(float[] data)
+    {
+        // 根据 Android demo 的逻辑:
+        // 如果 KWS 开关开启且未唤醒，则将音频数据传给 KWS 进行唤醒词检测
+        if (manager != null && data != null && data.Length > 0)
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (manager.GetKwsSwitch() && !manager.GetWakeup())
+            {
+                try
+                {
+                    AndroidJavaObject kwsAbility = manager.GetKwsAbility();
+                    if (kwsAbility != null)
+                    {
+                        kwsAbility.Call("inputData", data);
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    LoggerManager.Error($"KWS inputData 失败: {e.Message}", "SenseOnnx");
+                }
+            }
+            
+            // 如果已唤醒，可以将数据传给 STT 进行语音识别
+            if (manager.GetWakeup())
+            {
+                try
+                {
+                    AndroidJavaObject sttAbility = manager.GetSttAbility();
+                    if (sttAbility != null)
+                    {
+                        sttAbility.Call("inputData", data);
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    LoggerManager.Error($"STT inputData 失败: {e.Message}", "SenseOnnx");
+                }
+            }
+#endif
+        }
+    }
+
+    public void OnDataFinishCallback(float[] data)
+    {
+        // Record 通常是持续录音，不需要处理 finish 回调
+        // 如果需要，可以在这里添加录音结束的处理逻辑
+    }
+}
+
+/// <summary>
+/// Record Android 回调代理
+/// </summary>
+#if UNITY_ANDROID && !UNITY_EDITOR
+public class RecordCallbackProxy : AndroidJavaProxy
+{
+    private DataCallbackListener<float[]> callback;
+
+    public RecordCallbackProxy(DataCallbackListener<float[]> callback)
+        : base("com.sensetime.senseonnx.DataCallbackListener")
+    {
+        this.callback = callback;
+    }
+
+    // Android 回调方法
+    public void onChunk(float[] data)
+    {
+        UnityMainThreadDispatcher.Instance().Enqueue(() =>
+        {
+            callback.OnDataChunkCallback(data);
+        });
+    }
+
+    public void onFinish(float[] data)
     {
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {

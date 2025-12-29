@@ -2828,7 +2828,7 @@ MonoBehaviour:
   closeDelay: 0.5
   statusUpdateInterval: 0.5
   enableDebugLog: 1
-  characterAnimationManager: {fileID: 0}
+  characterAnimationManager: {fileID: 321184650}
   pauseCharacterAnimationOnLoad: 1
 --- !u!1 &2108684100
 GameObject:

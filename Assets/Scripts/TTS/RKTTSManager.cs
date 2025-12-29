@@ -316,7 +316,8 @@ public class RKTTSManager : MonoBehaviour
             try
             {
                 AndroidJavaObject application = unityActivity.Call<AndroidJavaObject>("getApplication");
-                ttsDetector = new AndroidJavaObject("com.senseflow.rktts.SenseRKTtsDetector", application);
+                // 使用新的包名 com.sensetime.rktts
+                ttsDetector = new AndroidJavaObject("com.sensetime.rktts.SenseRKTtsDetector", application);
 
                 if (enableDebugLog)
                     LoggerManager.Debug("[2/4] ✅ 使用构造函数 (Application) 创建成功", "TTS");
@@ -328,7 +329,7 @@ public class RKTTSManager : MonoBehaviour
                 // 尝试 2: 使用 Activity 参数的构造函数
                 try
                 {
-                    ttsDetector = new AndroidJavaObject("com.senseflow.rktts.SenseRKTtsDetector", unityActivity);
+                    ttsDetector = new AndroidJavaObject("com.sensetime.rktts.SenseRKTtsDetector", unityActivity);
 
                     if (enableDebugLog)
                         LoggerManager.Debug("[2/4] ✅ 使用构造函数 (Activity) 创建成功", "TTS");
@@ -340,7 +341,7 @@ public class RKTTSManager : MonoBehaviour
                     // 尝试 3: 无参构造函数
                     try
                     {
-                        ttsDetector = new AndroidJavaObject("com.senseflow.rktts.SenseRKTtsDetector");
+                        ttsDetector = new AndroidJavaObject("com.sensetime.rktts.SenseRKTtsDetector");
 
                         if (enableDebugLog)
                             LoggerManager.Debug("[2/4] ✅ 使用无参构造函数创建成功", "TTS");
@@ -752,7 +753,7 @@ public class RKTTSResultListener : AndroidJavaProxy
     private RKTTSManager manager;
 
     public RKTTSResultListener(RKTTSManager manager)
-        : base("com.senseflow.rktts.OnResultListener")
+        : base("com.sensetime.rktts.OnResultListener")
     {
         this.manager = manager;
     }

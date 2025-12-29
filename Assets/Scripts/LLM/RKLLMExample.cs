@@ -189,13 +189,13 @@ public class RKLLMExample : MonoBehaviour
                 // 使用 SenseOnnxManager 进行 TTS
                 if (SenseOnnxManager.Instance != null)
                 {
-                    // 优先使用 Onnx TTS
-                    if (SenseOnnxManager.Instance.IsOnnxTTSReady())
+                    // 优先使用 TTS Ability
+                    if (SenseOnnxManager.Instance.IsTtsAbilityReady())
                     {
-                        LoggerManager.Debug("使用 Onnx TTS", "LLM");
-                        SenseOnnxManager.Instance.OnnxTtsGenerate(fullResponse);
+                        LoggerManager.Debug("使用 TTS Ability", "LLM");
+                        SenseOnnxManager.Instance.TtsGenerate(fullResponse);
                     }
-                    // 如果 Onnx TTS 未就绪，使用 RK TTS
+                    // 如果 TTS Ability 未就绪，使用 RK TTS
                     else if (SenseOnnxManager.Instance.IsTTSReady())
                     {
                         LoggerManager.Debug("使用 RK TTS", "LLM");

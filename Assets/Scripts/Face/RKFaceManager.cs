@@ -133,7 +133,8 @@ public class RKFaceManager : MonoBehaviour
             if (enableDebugLog)
                 LoggerManager.Debug("[2/3] 创建 RKFaceSDK 实例...", "Face");
 
-            AndroidJavaClass rkfaceClass = new AndroidJavaClass("com.senseflow.rkface.RKFaceSDK");
+            // 使用新的包名 com.sensetime.rkface
+            AndroidJavaClass rkfaceClass = new AndroidJavaClass("com.sensetime.rkface.RKFaceSDK");
             rkfaceInstance = rkfaceClass.CallStatic<AndroidJavaObject>("getInstance");
 
             if (rkfaceInstance == null)

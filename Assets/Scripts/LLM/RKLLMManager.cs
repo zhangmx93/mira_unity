@@ -169,7 +169,8 @@ public class RKLLMManager : MonoBehaviour
                 LoggerManager.Debug("[2/4] 创建 SenseRKLlmDetector 实例...", "LLM");
 
             AndroidJavaObject application = unityActivity.Call<AndroidJavaObject>("getApplication");
-            rkllmDetector = new AndroidJavaObject("com.senseflow.rkllm.SenseRKLlmDetector", application);
+            // 使用新的包名 com.sensetime.rkllm
+            rkllmDetector = new AndroidJavaObject("com.sensetime.rkllm.SenseRKLlmDetector", application);
 
             if (enableDebugLog)
                 LoggerManager.Debug("[2/4] ✅ SenseRKLlmDetector 实例创建成功", "LLM");
@@ -442,7 +443,8 @@ public class RKLLMManager : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (isInitialized)
         {
-            using (AndroidJavaClass modelConfig = new AndroidJavaClass("com.senseflow.rkllm.ModelConfig"))
+            // 使用新的包名 com.sensetime.rkllm
+            using (AndroidJavaClass modelConfig = new AndroidJavaClass("com.sensetime.rkllm.ModelConfig"))
             {
                 modelConfig.CallStatic("setImageSize", width, height);
             }
@@ -461,8 +463,9 @@ public class RKLLMResultListener : AndroidJavaProxy
 {
     private RKLLMManager manager;
 
+    // 使用新的包名 com.sensetime.rkllm
     public RKLLMResultListener(RKLLMManager manager)
-        : base("com.senseflow.rkllm.OnResultListener")
+        : base("com.sensetime.rkllm.OnResultListener")
     {
         this.manager = manager;
     }

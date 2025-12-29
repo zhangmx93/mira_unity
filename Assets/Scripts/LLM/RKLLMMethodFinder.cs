@@ -31,13 +31,13 @@ public class RKLLMMethodFinder : MonoBehaviour
             }
 
             // 获取 SenseRKLlmDetector 类
-            using (AndroidJavaClass rkllmClass = new AndroidJavaClass("com.senseflow.rkllm.SenseRKLlmDetector"))
+            using (AndroidJavaClass rkllmClass = new AndroidJavaClass("com.sensetime.rkllm.SenseRKLlmDetector"))
             {
                 // 获取 Class 对象 - 使用反射获取 java.lang.Class
                 using (AndroidJavaClass classClass = new AndroidJavaClass("java.lang.Class"))
                 {
                     // 通过类名获取 Class 对象
-                    AndroidJavaObject classObj = classClass.CallStatic<AndroidJavaObject>("forName", "com.senseflow.rkllm.SenseRKLlmDetector");
+                    AndroidJavaObject classObj = classClass.CallStatic<AndroidJavaObject>("forName", "com.sensetime.rkllm.SenseRKLlmDetector");
 
                     // 获取所有方法
                     AndroidJavaObject[] methods = classObj.Call<AndroidJavaObject[]>("getMethods");

@@ -41,15 +41,15 @@ public class RKTTSDiagnostic : MonoBehaviour
         }
 
         // 2. 检查 RKTTS 主类
-        CheckClass("com.senseflow.rktts.SenseRKTtsDetector", "[2/5] RKTTS 主类");
+        CheckClass("com.sensetime.rktts.SenseRKTtsDetector", "[2/5] RKTTS 主类");
 
         // 3. 检查 OnResultListener 接口
-        CheckClass("com.senseflow.rktts.OnResultListener", "[3/5] OnResultListener 接口");
+        CheckClass("com.sensetime.rktts.OnResultListener", "[3/5] OnResultListener 接口");
 
         // 4. 尝试获取 TTS 实例
         try
         {
-            using (AndroidJavaClass ttsClass = new AndroidJavaClass("com.senseflow.rktts.SenseRKTtsDetector"))
+            using (AndroidJavaClass ttsClass = new AndroidJavaClass("com.sensetime.rktts.SenseRKTtsDetector"))
             {
                 // RKTTS SDK 使用无参数的 getInstance()，类似 RKFace 和 RKLLM SDK
                 AndroidJavaObject ttsInstance = ttsClass.CallStatic<AndroidJavaObject>("getInstance");
