@@ -13,10 +13,10 @@ public class CameraCapture : MonoBehaviour
     public string targetCameraName = "";
 
     [Tooltip("摄像头分辨率宽度")]
-    public int requestedWidth = 1080;
+    public int requestedWidth = 640;
 
     [Tooltip("摄像头分辨率高度")]
-    public int requestedHeight = 1920;
+    public int requestedHeight = 480;
 
     [Tooltip("目标帧率")]
     public int requestedFPS = 30;
@@ -41,6 +41,11 @@ public class CameraCapture : MonoBehaviour
 
     [Tooltip("是否启用调试日志")]
     public bool enableDebugLog = false;
+
+    [Header("内存管理")]
+    [Tooltip("自动清理内存间隔（秒），0表示不自动清理。建议设置为 30-60 秒以防止 OOM。")]
+    public float autoCleanupInterval = 30f;
+    private float cleanupTimer = 0f;
 
     // WebCamTexture 对象
     private WebCamTexture webCamTexture;
@@ -118,6 +123,32 @@ public class CameraCapture : MonoBehaviour
             // 每帧捕获
             CaptureFrame();
         }
+
+        // 定时清理内存
+        if (autoCleanupInterval > 0)
+        {
+            cleanupTimer += Time.deltaTime;
+            if (cleanupTimer >= autoCleanupInterval)
+            {
+                cleanupTimer = 0f;
+                DoMemoryCleanup();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 执行内存清理
+    /// </summary>
+    private void DoMemoryCleanup()
+    {
+        if (enableDebugLog)
+            LoggerManager.Debug("执行定期内存清理...", "Camera");
+
+        // 释放未使用的 Unity 资源
+        Resources.UnloadUnusedAssets();
+        
+        // 强制 GC
+        System.GC.Collect();
     }
 
     void OnDestroy()

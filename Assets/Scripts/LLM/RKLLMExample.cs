@@ -28,8 +28,14 @@ public class RKLLMExample : MonoBehaviour
     // 累积的响应文本
     private System.Text.StringBuilder responseBuilder = new System.Text.StringBuilder();
 
-    // TTS 管理器引用
-    private RKTTSManager ttsManager;
+    // 音频流播放相关
+    private AudioSource audioSource;
+    private System.Collections.Concurrent.ConcurrentQueue<float> audioBufferQueue = new System.Collections.Concurrent.ConcurrentQueue<float>();
+    private int ttsSampleRate = 16000;
+    private bool isStreaming = false;
+    private int streamingCallbackCount = 0;
+
+
 
     void Start()
     {
@@ -73,26 +79,52 @@ public class RKLLMExample : MonoBehaviour
         {
             LoggerManager.Error("未找到 RKLLMManager", "LLM");
         }
-
-        // 查找 TTS 管理器
-        if (enableAutoTTS)
+        
+        // 注册 TTS 数据回调
+        if (SenseOnnxManager.Instance != null)
         {
-            ttsManager = RKTTSManager.Instance;
-            if (ttsManager != null)
-            {
-                LoggerManager.Info("找到 RKTTSManager，已启用自动 TTS", "LLM");
-            }
-            else
-            {
-                LoggerManager.Warning("未找到 RKTTSManager，自动 TTS 将被禁用", "LLM");
-                enableAutoTTS = false;
-            }
+            SenseOnnxManager.Instance.OnTtsAudioDataRecevied += OnTtsDataCallback;
         }
+
+
 
         // 初始化响应文本
         if (responseText != null)
         {
             responseText.text = "wait...";
+        }
+        if (responseText != null)
+        {
+            responseText.text = "wait...";
+        }
+
+        // 初始化音频组件
+        SetupAudioPlayer();
+    }
+    
+    private void SetupAudioPlayer()
+    {
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
+        audioSource.playOnAwake = false;
+        audioSource.loop = true; // 循环播放以便持续流式读取
+        
+        // 禁用 SenseOnnxManager 内部播放，改由 AudioSource 播放
+        if (SenseOnnxManager.Instance != null)
+        {
+            SenseOnnxManager.Instance.useInternalAudioPlayer = false;
+        }
+
+        // 默认目标采样率为 44100
+        ttsSampleRate = 44100;
+
+        // 添加采样率诊断工具
+        if (GetComponent<TTSSampleRateFix>() == null)
+        {
+            gameObject.AddComponent<TTSSampleRateFix>();
         }
     }
 
@@ -104,6 +136,12 @@ public class RKLLMExample : MonoBehaviour
             rkllmManager.OnLLMResult -= OnLLMResult;
             rkllmManager.OnLLMError -= OnLLMError;
             rkllmManager.OnLLMComplete -= OnLLMComplete;
+        }
+
+        // 取消注册 TTS 数据回调
+        if (SenseOnnxManager.Instance != null)
+        {
+            SenseOnnxManager.Instance.OnTtsAudioDataRecevied -= OnTtsDataCallback;
         }
     }
 
@@ -189,31 +227,19 @@ public class RKLLMExample : MonoBehaviour
                 // 使用 SenseOnnxManager 进行 TTS
                 if (SenseOnnxManager.Instance != null)
                 {
-                    // 优先使用 TTS Ability
                     if (SenseOnnxManager.Instance.IsTtsAbilityReady())
                     {
-                        LoggerManager.Debug("使用 TTS Ability", "LLM");
+                        LoggerManager.Debug("使用 SenseOnnx TTS Ability", "LLM");
                         SenseOnnxManager.Instance.TtsGenerate(fullResponse);
-                    }
-                    // 如果 TTS Ability 未就绪，使用 RK TTS
-                    else if (SenseOnnxManager.Instance.IsTTSReady())
-                    {
-                        LoggerManager.Debug("使用 RK TTS", "LLM");
-                        SenseOnnxManager.Instance.Speak(fullResponse);
                     }
                     else
                     {
-                        LoggerManager.Warning("所有 TTS 均未就绪", "LLM");
+                        LoggerManager.Warning("SenseOnnx TTS Ability 未就绪", "LLM");
                     }
                 }
                 else
                 {
-                    LoggerManager.Warning("SenseOnnxManager 实例不存在，回退到直接调用 TTS", "LLM");
-                    // 回退：直接调用 ttsManager（如果存在）
-                    // if (ttsManager != null)
-                    // {
-                    //     ttsManager.Speak(fullResponse);
-                    // }
+                    LoggerManager.Warning("SenseOnnxManager 实例不存在", "LLM");
                 }
             }
             else
@@ -222,4 +248,102 @@ public class RKLLMExample : MonoBehaviour
             }
         }
     }
+
+
+    /// <summary>
+    /// TTS 音频数据回调
+    /// </summary>
+    private void OnTtsDataCallback(float[] data)
+    {
+        if (data == null || data.Length == 0) return;
+
+        int sourceRate = 16000;
+        if (SenseOnnxManager.Instance != null && SenseOnnxManager.Instance.GetTtsSampleRate() > 0)
+        {
+            sourceRate = SenseOnnxManager.Instance.GetTtsSampleRate();
+        }
+
+        float[] dataToEnqueue = data;
+
+        // 如果源采样率不是 44100，则进行重采样
+        if (sourceRate != ttsSampleRate)
+        {
+            dataToEnqueue = Resample(data, sourceRate, ttsSampleRate);
+        }
+
+        // 将数据放入队列
+        foreach (float sample in dataToEnqueue)
+        {
+            audioBufferQueue.Enqueue(sample);
+        }
+
+        // 如果还没开始播放，且缓冲了一定数据，则开始播放
+        if (!isStreaming && audioBufferQueue.Count > ttsSampleRate * 0.1f) // 缓冲 0.1s
+        {
+            StartStreamingPlayback();
+        }
+    }
+
+    /// <summary>
+    /// 简单的线性重采样
+    /// </summary>
+    private float[] Resample(float[] input, int sourceRate, int targetRate)
+    {
+        if (sourceRate == targetRate) return input;
+
+        float ratio = (float)sourceRate / targetRate;
+        int newLength = (int)(input.Length / ratio);
+        float[] output = new float[newLength];
+
+        for (int i = 0; i < newLength; i++)
+        {
+            float position = i * ratio;
+            int index = (int)position;
+            float frac = position - index;
+
+            float val1 = input[index];
+            float val2 = (index + 1 < input.Length) ? input[index + 1] : val1;
+
+            output[i] = val1 * (1.0f - frac) + val2 * frac;
+        }
+
+        return output;
+    }
+
+    private void StartStreamingPlayback()
+    {
+        if (isStreaming) return;
+
+        // 强制使用 44100Hz
+        ttsSampleRate = 44100;
+        
+        LoggerManager.Info($"开始流式播放 - 采样率: {ttsSampleRate} (强制)", "LLM");
+
+        // 创建流式 AudioClip
+        // 长度设置为较短（例如 10秒循环），通过回调填充
+        AudioClip clip = AudioClip.Create("TTS_Stream", ttsSampleRate * 10, 1, ttsSampleRate, true, OnAudioRead);
+        audioSource.clip = clip;
+        audioSource.Play();
+        isStreaming = true;
+    }
+
+    // Unity AudioSource 的 PCM 读取回调 (在此线程填充数据)
+    private void OnAudioRead(float[] data)
+    {
+        for (int i = 0; i < data.Length; i++)
+        {
+            if (audioBufferQueue.TryDequeue(out float sample))
+            {
+                data[i] = sample;
+            }
+            else
+            {
+                // 队列为空，填充静音
+                data[i] = 0f;
+            }
+        }
+    }
+    
+    // 检测是否静音太久可以停止播放（可选优化，目前简化为一直播放直到 Stop）
+
 }

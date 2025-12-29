@@ -253,14 +253,15 @@ public class RKFaceManager : MonoBehaviour
         try
         {
             // 获取特征向量
-            AndroidJavaObject featureArray = rkfaceInstance.Call<AndroidJavaObject>("extractFeatures", imageBytes);
-
-            if (featureArray != null)
+            using (AndroidJavaObject featureArray = rkfaceInstance.Call<AndroidJavaObject>("extractFeatures", imageBytes))
             {
-                // 转换为 float[]
-                float[] features = AndroidJNIHelper.ConvertFromJNIArray<float[]>(featureArray.GetRawObject());
-                LoggerManager.Debug($"提取特征维度: {features.Length}", "Face");
-                return features;
+                if (featureArray != null)
+                {
+                    // 转换为 float[]
+                    float[] features = AndroidJNIHelper.ConvertFromJNIArray<float[]>(featureArray.GetRawObject());
+                    LoggerManager.Debug($"提取特征维度: {features.Length}", "Face");
+                    return features;
+                }
             }
         }
         catch (Exception e)

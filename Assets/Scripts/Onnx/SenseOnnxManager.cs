@@ -59,6 +59,7 @@ public class SenseOnnxManager : MonoBehaviour
     #region 状态变量
 
     private bool isInitialized = false;
+    private int ttsSampleRate = 16000; // tts采样率
     private bool isTTSReady = false;
     private bool isSTTReady = false;
     private bool isOnnxTTSReady = false;
@@ -74,15 +75,27 @@ public class SenseOnnxManager : MonoBehaviour
 
     // TTS 数据回调监听器
     private DataCallbackListener<float[]> ttsDataCallback;
+#if UNITY_ANDROID && !UNITY_EDITOR
+    private TtsCallbackProxy ttsProxy;
+#endif
 
     // STT 数据回调监听器
     private DataCallbackListener<string> sttDataCallback;
+#if UNITY_ANDROID && !UNITY_EDITOR
+    private SttCallbackProxy sttProxy;
+#endif
 
     // KWS 数据回调监听器
     private DataCallbackListener<string> kwsDataCallback;
+#if UNITY_ANDROID && !UNITY_EDITOR
+    private KwsCallbackProxy kwsProxy;
+#endif
 
     // Record 数据回调监听器
     private DataCallbackListener<float[]> recordDataCallback;
+#if UNITY_ANDROID && !UNITY_EDITOR
+    private RecordCallbackProxy recordProxy;
+#endif
 
     #endregion
 
@@ -94,6 +107,8 @@ public class SenseOnnxManager : MonoBehaviour
     public event Action<string> OnSttResult;  // STT 识别结果事件
     public event Action<string> OnKwsDetected;  // KWS 唤醒词检测事件
     public event Action<float[]> OnTtsAudioChunk;  // TTS 音频块事件
+    public event Action<float[]> OnTtsAudioDataRecevied; // 新增 TTS 数据事件
+    public bool useInternalAudioPlayer = true; // 是否使用内部 AudioTrack播放
 
     #endregion
 
@@ -629,6 +644,7 @@ public class SenseOnnxManager : MonoBehaviour
 
             // 获取采样率
             int sampleRate = ttsAbility.Call<int>("getSampleRate");
+            ttsSampleRate = sampleRate; // 存储采样率
             LoggerManager.Debug($"TTS 采样率: {sampleRate}", "SenseOnnx");
 
             // 获取最小缓冲区大小
@@ -707,7 +723,7 @@ public class SenseOnnxManager : MonoBehaviour
             ttsDataCallback = new TtsDataCallback(this);
             try
             {
-                TtsCallbackProxy ttsProxy = new TtsCallbackProxy(ttsDataCallback);
+                ttsProxy = new TtsCallbackProxy(ttsDataCallback);
                 ttsAbility.Call("setDataCallbackListener", ttsProxy);
                 LoggerManager.Debug("✅ TTS 回调监听器已设置", "SenseOnnx");
             }
@@ -723,7 +739,7 @@ public class SenseOnnxManager : MonoBehaviour
             sttDataCallback = new SttDataCallback(this);
             try
             {
-                SttCallbackProxy sttProxy = new SttCallbackProxy(sttDataCallback);
+                sttProxy = new SttCallbackProxy(sttDataCallback);
                 sttAbility.Call("setDataCallbackListener", sttProxy);
                 LoggerManager.Debug("✅ STT 回调监听器已设置", "SenseOnnx");
             }
@@ -739,7 +755,7 @@ public class SenseOnnxManager : MonoBehaviour
             kwsDataCallback = new KwsDataCallback(this);
             try
             {
-                KwsCallbackProxy kwsProxy = new KwsCallbackProxy(kwsDataCallback);
+                kwsProxy = new KwsCallbackProxy(kwsDataCallback);
                 kwsAbility.Call("setDataCallbackListener", kwsProxy);
                 LoggerManager.Debug("✅ KWS 回调监听器已设置", "SenseOnnx");
             }
@@ -755,7 +771,7 @@ public class SenseOnnxManager : MonoBehaviour
             recordDataCallback = new RecordDataCallback(this);
             try
             {
-                RecordCallbackProxy recordProxy = new RecordCallbackProxy(recordDataCallback);
+                recordProxy = new RecordCallbackProxy(recordDataCallback);
                 recordAbility.Call("setDataCallbackListener", recordProxy);
                 LoggerManager.Debug("✅ Record 回调监听器已设置", "SenseOnnx");
             }
@@ -807,12 +823,26 @@ public class SenseOnnxManager : MonoBehaviour
 #endif
     }
 
+
+
     /// <summary>
-    /// 检查 TTS 是否就绪
+    /// 获取 TTS 采样率
+    /// </summary>
+    public int GetTtsSampleRate()
+    {
+        return ttsSampleRate;
+    }
+
+    /// <summary>
+    /// 检查 TTS Ability 是否就绪
     /// </summary>
     public bool IsTtsAbilityReady()
     {
-        return isTTSReady;
+#if UNITY_ANDROID && !UNITY_EDITOR
+        return isOnnxTTSReady && ttsAbility != null;
+#else
+        return false;
+#endif
     }
 
     #endregion
@@ -1122,6 +1152,14 @@ public class SenseOnnxManager : MonoBehaviour
 
     // TODO: 添加 STT 相关接口
 
+    /// <summary>
+    /// 触发 TTS 数据接收事件
+    /// </summary>
+    public void DispatchTtsData(float[] data)
+    {
+        OnTtsAudioDataRecevied?.Invoke(data);
+    }
+
     #endregion
 }
 
@@ -1143,9 +1181,14 @@ public class TtsDataCallback : DataCallbackListener<float[]>
     {
         LoggerManager.Debug($"TTS 数据块回调: {data?.Length ?? 0} 个采样", "SenseOnnx");
         
+        if (manager != null)
+        {
+            manager.DispatchTtsData(data);
+        }
+
 #if UNITY_ANDROID && !UNITY_EDITOR
         // 将音频数据写入 AudioTrack 播放
-        if (manager != null && data != null && data.Length > 0)
+        if (manager != null && manager.useInternalAudioPlayer && data != null && data.Length > 0)
         {
             try
             {
