@@ -17,8 +17,6 @@ public class SDKLoadMonitor : MonoBehaviour
     [Tooltip("LLM 管理器")]
     public RKLLMManager llmManager;
 
-    [Tooltip("TTS 管理器")]
-    public RKTTSManager ttsManager;
 
     [Tooltip("Face 管理器")]
     public RKFaceManager faceManager;
@@ -53,7 +51,6 @@ public class SDKLoadMonitor : MonoBehaviour
     // SDK 状态
     private bool isOnnxReady = false;
     private bool isLLMReady = false;
-    private bool isTTSReady = false;
     private bool isFaceReady = false;
     private bool allSDKsReady = false;
     private bool isMonitoring = false;
@@ -109,10 +106,7 @@ public class SDKLoadMonitor : MonoBehaviour
             llmManager = FindObjectOfType<RKLLMManager>();
         }
 
-        if (ttsManager == null)
-        {
-            ttsManager = FindObjectOfType<RKTTSManager>();
-        }
+
 
         if (faceManager == null)
         {
@@ -129,7 +123,6 @@ public class SDKLoadMonitor : MonoBehaviour
             LoggerManager.Info($"找到的 SDK 管理器:", "SDKMonitor");
             LoggerManager.Info($"  - Onnx: {(onnxManager != null ? "✅" : "❌")}", "SDKMonitor");
             LoggerManager.Info($"  - LLM: {(llmManager != null ? "✅" : "❌")}", "SDKMonitor");
-            LoggerManager.Info($"  - TTS: {(ttsManager != null ? "✅" : "❌")}", "SDKMonitor");
             LoggerManager.Info($"  - Face: {(faceManager != null ? "✅" : "❌")}", "SDKMonitor");
             LoggerManager.Info($"  - Loader: {(sdkLoader != null ? "✅" : "❌")}", "SDKMonitor");
         }
@@ -217,7 +210,6 @@ public class SDKLoadMonitor : MonoBehaviour
     {
         bool prevOnnxReady = isOnnxReady;
         bool prevLLMReady = isLLMReady;
-        bool prevTTSReady = isTTSReady;
         bool prevFaceReady = isFaceReady;
 
         // 检查 Onnx 状态（如果存在）
@@ -226,8 +218,7 @@ public class SDKLoadMonitor : MonoBehaviour
         // 检查 LLM 状态
         isLLMReady = llmManager != null && llmManager.IsInitialized();
 
-        // 检查 TTS 状态
-        isTTSReady = ttsManager != null && ttsManager.IsInitialized();
+
 
         // 检查 Face 状态（如果存在）
         isFaceReady = faceManager == null || faceManager.IsInitialized;
@@ -241,8 +232,7 @@ public class SDKLoadMonitor : MonoBehaviour
             if (isLLMReady && !prevLLMReady)
                 LoggerManager.Info("✅ RKLLM 已就绪", "SDKMonitor");
 
-            if (isTTSReady && !prevTTSReady)
-                LoggerManager.Info("✅ RKTTS 已就绪", "SDKMonitor");
+
 
             if (isFaceReady && !prevFaceReady && faceManager != null)
                 LoggerManager.Info("✅ RKFace 已就绪", "SDKMonitor");
@@ -254,29 +244,30 @@ public class SDKLoadMonitor : MonoBehaviour
     /// </summary>
     bool CheckAllSDKsReady()
     {
-        return isOnnxReady && isLLMReady && isTTSReady && isFaceReady;
+        return isOnnxReady && isLLMReady && isFaceReady;
     }
 
     /// <summary>
-    /// 获取未就绪的 SDK 列表
+    /// 获取未就绪的 SDK 列表详细信息
     /// </summary>
     string GetFailedSDKsList()
     {
-        List<string> failedSDKs = new List<string>();
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
 
-        if (!isOnnxReady && onnxManager != null)
-            failedSDKs.Add("SenseOnnx");
+        if (!isOnnxReady)
+            sb.Append($"SenseOnnx(Init:{onnxManager?.IsInitialized() ?? false}), ");
 
-        if (!isLLMReady && llmManager != null)
-            failedSDKs.Add("RKLLM");
+        if (!isLLMReady)
+            sb.Append($"RKLLM(Init:{llmManager?.IsInitialized() ?? false}), ");
 
-        if (!isTTSReady && ttsManager != null)
-            failedSDKs.Add("RKTTS");
 
-        if (!isFaceReady && faceManager != null)
-            failedSDKs.Add("RKFace");
 
-        return string.Join(", ", failedSDKs);
+        if (!isFaceReady)
+            sb.Append($"RKFace(Init:{(faceManager != null ? faceManager.IsInitialized : false)})");
+
+        if (sb.Length == 0) return "Unknown (All flags true but timeout triggered?)";
+        
+        return sb.ToString().TrimEnd(',', ' ');
     }
 
     /// <summary>
@@ -299,8 +290,7 @@ public class SDKLoadMonitor : MonoBehaviour
         if (llmManager != null)
             status += isLLMReady ? "✅ LLM 就绪\n" : "⏳ LLM 加载中...\n";
 
-        if (ttsManager != null)
-            status += isTTSReady ? "✅ TTS 就绪\n" : "⏳ TTS 加载中...\n";
+
 
         if (faceManager != null)
             status += isFaceReady ? "✅ Face 就绪" : "⏳ Face 加载中...";
@@ -392,37 +382,7 @@ public class SDKLoadMonitor : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 安全地执行需要 TTS 的操作
-    /// </summary>
-    public void SafeTTSOperation(System.Action action, System.Action<string> onError = null)
-    {
-        if (!isTTSReady)
-        {
-            string error = "RKTTS 未就绪，无法执行操作";
-            LoggerManager.Warning(error, "SDKMonitor");
-            onError?.Invoke(error);
-            return;
-        }
 
-        if (operationsLocked)
-        {
-            string error = "SDK 正在加载中，请稍候";
-            LoggerManager.Warning(error, "SDKMonitor");
-            onError?.Invoke(error);
-            return;
-        }
-
-        try
-        {
-            action?.Invoke();
-        }
-        catch (System.Exception e)
-        {
-            LoggerManager.Error($"TTS 操作执行失败 - {e.Message}", "SDKMonitor");
-            onError?.Invoke(e.Message);
-        }
-    }
 
     /// <summary>
     /// 安全地执行需要 Face 的操作
@@ -459,9 +419,9 @@ public class SDKLoadMonitor : MonoBehaviour
     /// <summary>
     /// 获取各 SDK 的就绪状态
     /// </summary>
-    public (bool onnx, bool llm, bool tts, bool face) GetSDKReadyStatus()
+    public (bool onnx, bool llm, bool face) GetSDKReadyStatus()
     {
-        return (isOnnxReady, isLLMReady, isTTSReady, isFaceReady);
+        return (isOnnxReady, isLLMReady, isFaceReady);
     }
 
     /// <summary>
@@ -474,7 +434,7 @@ public class SDKLoadMonitor : MonoBehaviour
 
         isOnnxReady = false;
         isLLMReady = false;
-        isTTSReady = false;
+
         isFaceReady = false;
         allSDKsReady = false;
         operationsLocked = true;

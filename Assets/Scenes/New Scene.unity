@@ -1153,7 +1153,7 @@ MonoBehaviour:
   checkInterval: 0.5
   maxWaitTime: 30
   enableDebugLog: 1
-  loadingPanel: {fileID: 0}
+  loadingPanel: {fileID: 1686192307}
   autoCloseLoadingPanel: 1
   OnAllSDKsReady:
     m_PersistentCalls:

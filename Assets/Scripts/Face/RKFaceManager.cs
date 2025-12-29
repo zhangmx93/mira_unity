@@ -20,7 +20,7 @@ public class RKFaceManager : MonoBehaviour
     public string modelPath = "rkface_model";
 
     [Tooltip("是否启用调试日志")]
-    public bool enableDebugLog = true;
+    public bool enableDebugLog = false;
 
     private bool isInitialized = false;
 

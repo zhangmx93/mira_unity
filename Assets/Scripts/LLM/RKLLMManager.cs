@@ -18,7 +18,7 @@ public class RKLLMManager : MonoBehaviour
     public int imageHeight = 480;
 
     [Tooltip("是否启用调试日志")]
-    public bool enableDebugLog = true;
+    public bool enableDebugLog = false;
 
     [Header("引用")]
     [Tooltip("摄像头捕获组件")]

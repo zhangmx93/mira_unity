@@ -92,7 +92,7 @@ public class CameraCaptureExample : MonoBehaviour
     /// </summary>
     void OnImageCaptured(Texture2D image)
     {
-        LoggerManager.Debug($"收到新图片: {image.width}x{image.height}", "Camera");
+        // LoggerManager.Debug($"收到新图片: {image.width}x{image.height}", "Camera");
 
         // 在这里可以对图片进行处理
         // 例如：应用滤镜、人脸检测、特征提取等
@@ -103,7 +103,7 @@ public class CameraCaptureExample : MonoBehaviour
     /// </summary>
     void OnImageBytesCaptured(byte[] imageBytes)
     {
-        LoggerManager.Debug($"收到新图片字节数组: {imageBytes.Length / 1024}KB", "Camera");
+        // LoggerManager.Debug($"收到新图片字节数组: {imageBytes.Length / 1024}KB", "Camera");
 
         // 示例：发送到人脸识别 SDK
         // ProcessWithRKFace(imageBytes);

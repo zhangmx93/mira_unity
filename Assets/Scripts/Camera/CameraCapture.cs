@@ -40,7 +40,7 @@ public class CameraCapture : MonoBehaviour
     public float captureInterval = 0.1f;
 
     [Tooltip("是否启用调试日志")]
-    public bool enableDebugLog = true;
+    public bool enableDebugLog = false;
 
     // WebCamTexture 对象
     private WebCamTexture webCamTexture;
