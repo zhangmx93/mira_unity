@@ -826,6 +826,7 @@ Transform:
   - {fileID: 1266386058}
   - {fileID: 47948092}
   - {fileID: 1014837214}
+  - {fileID: 1715770063}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &321184649
@@ -1113,6 +1114,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   initialDelay: 0.2
   delayBetweenSDKs: 0.5
+  onnxManager: {fileID: 1715770064}
   llmManager: {fileID: 67992673}
   ttsManager: {fileID: 0}
   faceManager: {fileID: 0}
@@ -1143,8 +1145,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  onnxManager: {fileID: 1715770064}
   llmManager: {fileID: 67992673}
-  ttsManager: {fileID: 1266386062}
+  ttsManager: {fileID: 0}
   faceManager: {fileID: 0}
   sdkLoader: {fileID: 675974601}
   checkInterval: 0.5
@@ -2301,6 +2304,55 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1686192307}
   m_CullTransparentMesh: 1
+--- !u!1 &1715770062
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1715770063}
+  - component: {fileID: 1715770064}
+  m_Layer: 0
+  m_Name: Onnx
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1715770063
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1715770062}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 294615134}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1715770064
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1715770062}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da897a24604b043649a1123510aebf12, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SenseOnnxManager
+  enableTTS: 1
+  ttsManager: {fileID: 0}
+  enableOnnxTTS: 1
+  enableSTT: 0
+  sttManager: {fileID: 0}
 --- !u!1 &1847099759
 GameObject:
   m_ObjectHideFlags: 0

@@ -3,7 +3,7 @@ using System.Collections;
 
 /// <summary>
 /// SDK 延迟加载管理器
-/// 在程序启动时按顺序加载 LLM 和 TTS，避免同时加载导致的启动缓慢
+/// 在程序启动时按顺序加载 Onnx、LLM 和 TTS，避免同时加载导致的启动缓慢
 /// </summary>
 public class SDKLoader : MonoBehaviour
 {
@@ -15,6 +15,9 @@ public class SDKLoader : MonoBehaviour
     public float delayBetweenSDKs = 2.0f;  // 从 1.0 增加到 2.0
 
     [Header("SDK 引用")]
+    [Tooltip("SenseOnnx 管理器（如果为空会自动查找）")]
+    public SenseOnnxManager onnxManager;
+
     [Tooltip("LLM 管理器（如果为空会自动查找）")]
     public RKLLMManager llmManager;
 
@@ -48,6 +51,22 @@ public class SDKLoader : MonoBehaviour
     /// </summary>
     void FindSDKManagers()
     {
+        // 查找 SenseOnnx Manager
+        if (onnxManager == null)
+        {
+            onnxManager = FindObjectOfType<SenseOnnxManager>();
+            if (onnxManager != null)
+            {
+                if (enableDebugLog)
+                    LoggerManager.Info("✅ 找到 SenseOnnxManager", "SDKLoader");
+            }
+            else
+            {
+                if (enableDebugLog)
+                    LoggerManager.Debug("⚠️ 未找到 SenseOnnxManager（可选）", "SDKLoader");
+            }
+        }
+
         // 查找 LLM Manager
         if (llmManager == null)
         {
@@ -107,9 +126,38 @@ public class SDKLoader : MonoBehaviour
 
         yield return new WaitForSeconds(initialDelay);
 
-        // === 第一步：加载 RKLLM ===
+        // === 第一步：加载 SenseOnnx（如果有）===
+        if (onnxManager != null)
+        {
+            if (enableDebugLog)
+                LoggerManager.Info("[1/4] 正在加载 SenseOnnx...", "SDKLoader");
+
+            // 启用 SenseOnnx Manager（会触发 OnEnable 开始初始化）
+            onnxManager.enabled = true;
+
+            if (enableDebugLog)
+                LoggerManager.Info("✅ SenseOnnx 已启用，正在后台初始化", "SDKLoader");
+
+            // 分帧加载，避免阻塞主线程
+            yield return null;
+            yield return null;
+            yield return null;
+
+            // 延迟一段时间再加载下一个 SDK
+            if (enableDebugLog)
+                LoggerManager.Info($"等待 {delayBetweenSDKs} 秒...", "SDKLoader");
+
+            yield return new WaitForSeconds(delayBetweenSDKs);
+        }
+        else
+        {
+            if (enableDebugLog)
+                LoggerManager.Debug("⚠️ 跳过 SenseOnnx（未找到管理器，这是可选的）", "SDKLoader");
+        }
+
+        // === 第二步：加载 RKLLM ===
         if (enableDebugLog)
-            LoggerManager.Info("[1/3] 正在加载 RKLLM...", "SDKLoader");
+            LoggerManager.Info($"[{(onnxManager != null ? "2" : "1")}/4] 正在加载 RKLLM...", "SDKLoader");
 
         if (llmManager != null)
         {
@@ -135,9 +183,9 @@ public class SDKLoader : MonoBehaviour
 
         yield return new WaitForSeconds(delayBetweenSDKs);
 
-        // === 第二步：加载 RKTTS ===
+        // === 第三步：加载 RKTTS ===
         if (enableDebugLog)
-            LoggerManager.Info("[2/3] 正在加载 RKTTS...", "SDKLoader");
+            LoggerManager.Info($"[{(onnxManager != null ? "3" : "2")}/4] 正在加载 RKTTS...", "SDKLoader");
 
         if (ttsManager != null)
         {
@@ -166,9 +214,9 @@ public class SDKLoader : MonoBehaviour
             yield return new WaitForSeconds(delayBetweenSDKs);
         }
 
-        // === 第三步：加载 RKFace（可选）===
+        // === 第四步：加载 RKFace（可选）===
         if (enableDebugLog)
-            LoggerManager.Info("[3/3] 正在加载 RKFace...", "SDKLoader");
+            LoggerManager.Info($"[{(onnxManager != null ? "4" : "3")}/4] 正在加载 RKFace...", "SDKLoader");
 
         if (faceManager != null)
         {
@@ -208,11 +256,12 @@ public class SDKLoader : MonoBehaviour
     /// </summary>
     public bool AreAllSDKsReady()
     {
+        bool onnxReady = onnxManager == null || onnxManager.IsInitialized(); // Onnx 是可选的
         bool llmReady = llmManager != null && llmManager.IsInitialized();
         bool ttsReady = ttsManager != null && ttsManager.IsInitialized();
         bool faceReady = faceManager == null || faceManager.IsInitialized; // Face 是可选的
 
-        return llmReady && ttsReady && faceReady;
+        return onnxReady && llmReady && ttsReady && faceReady;
     }
 
     /// <summary>
@@ -247,16 +296,22 @@ public class SDKLoader : MonoBehaviour
         }
 
         // 检查各 SDK 状态
+        bool onnxReady = onnxManager == null || onnxManager.IsInitialized();
         bool llmReady = llmManager != null && llmManager.IsInitialized();
         bool ttsReady = ttsManager != null && ttsManager.IsInitialized();
         bool faceReady = faceManager == null || faceManager.IsInitialized;
 
-        if (llmReady && ttsReady && faceReady)
+        if (onnxReady && llmReady && ttsReady && faceReady)
         {
             return "✅ 所有 SDK 就绪";
         }
 
         string status = "SDK 初始化中:\n";
+
+        if (onnxManager != null)
+        {
+            status += onnxReady ? "✅ Onnx 就绪\n" : "⏳ Onnx 初始化中...\n";
+        }
 
         if (llmManager != null)
         {
@@ -293,6 +348,7 @@ public class SDKLoader : MonoBehaviour
             LoggerManager.Info("手动重新加载 SDK", "SDKLoader");
 
         // 禁用所有 SDK
+        if (onnxManager != null) onnxManager.enabled = false;
         if (llmManager != null) llmManager.enabled = false;
         if (ttsManager != null) ttsManager.enabled = false;
         if (faceManager != null) faceManager.enabled = false;

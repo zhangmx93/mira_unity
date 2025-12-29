@@ -236,15 +236,19 @@ public class LoadingPanelController : MonoBehaviour
             // 更新进度条
             if (SDKLoadMonitor.Instance != null && progressBar != null)
             {
-                var (llm, tts, face) = SDKLoadMonitor.Instance.GetSDKReadyStatus();
-                int readyCount = (llm ? 1 : 0) + (tts ? 1 : 0) + (face ? 1 : 0);
-                int totalCount = 3;
+                var (onnx, llm, tts, face) = SDKLoadMonitor.Instance.GetSDKReadyStatus();
+                int readyCount = (onnx ? 1 : 0) + (llm ? 1 : 0) + (tts ? 1 : 0) + (face ? 1 : 0);
+                int totalCount = 4;
 
-                // 如果没有 Face Manager，总数为 2
+                // 如果没有 Onnx Manager，总数减 1
+                if (FindObjectOfType<SenseOnnxManager>() == null)
+                    totalCount--;
+
+                // 如果没有 Face Manager，总数减 1
                 if (FindObjectOfType<RKFaceManager>() == null)
-                    totalCount = 2;
+                    totalCount--;
 
-                progressBar.value = (float)readyCount / totalCount;
+                progressBar.value = totalCount > 0 ? (float)readyCount / totalCount : 1f;
             }
 
             yield return new WaitForSeconds(statusUpdateInterval);

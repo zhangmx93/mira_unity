@@ -267,8 +267,8 @@ PlayerSettings:
   AndroidTargetArchitectures: 3
   AndroidSplashScreenScale: 0
   androidSplashScreen: {fileID: 0}
-  AndroidKeystoreName: /Users/zhangmengxi.vendor/work/models/3588.jks
-  AndroidKeyaliasName: senseflow
+  AndroidKeystoreName: /Users/zhangmengxi.vendor/key0.keystore
+  AndroidKeyaliasName: key0
   AndroidEnableArmv9SecurityFeatures: 0
   AndroidEnableArm64MTE: 0
   AndroidBuildApkPerCpuArchitecture: 0

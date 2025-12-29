@@ -11,6 +11,9 @@ using System.Collections.Generic;
 public class SDKLoadMonitor : MonoBehaviour
 {
     [Header("SDK 引用")]
+    [Tooltip("SenseOnnx 管理器")]
+    public SenseOnnxManager onnxManager;
+
     [Tooltip("LLM 管理器")]
     public RKLLMManager llmManager;
 
@@ -48,6 +51,7 @@ public class SDKLoadMonitor : MonoBehaviour
     public UnityEvent<string> OnSDKLoadFailed;
 
     // SDK 状态
+    private bool isOnnxReady = false;
     private bool isLLMReady = false;
     private bool isTTSReady = false;
     private bool isFaceReady = false;
@@ -95,6 +99,11 @@ public class SDKLoadMonitor : MonoBehaviour
     /// </summary>
     void FindAllSDKManagers()
     {
+        if (onnxManager == null)
+        {
+            onnxManager = FindObjectOfType<SenseOnnxManager>();
+        }
+
         if (llmManager == null)
         {
             llmManager = FindObjectOfType<RKLLMManager>();
@@ -118,6 +127,7 @@ public class SDKLoadMonitor : MonoBehaviour
         if (enableDebugLog)
         {
             LoggerManager.Info($"找到的 SDK 管理器:", "SDKMonitor");
+            LoggerManager.Info($"  - Onnx: {(onnxManager != null ? "✅" : "❌")}", "SDKMonitor");
             LoggerManager.Info($"  - LLM: {(llmManager != null ? "✅" : "❌")}", "SDKMonitor");
             LoggerManager.Info($"  - TTS: {(ttsManager != null ? "✅" : "❌")}", "SDKMonitor");
             LoggerManager.Info($"  - Face: {(faceManager != null ? "✅" : "❌")}", "SDKMonitor");
@@ -205,9 +215,13 @@ public class SDKLoadMonitor : MonoBehaviour
     /// </summary>
     void UpdateSDKStatus()
     {
+        bool prevOnnxReady = isOnnxReady;
         bool prevLLMReady = isLLMReady;
         bool prevTTSReady = isTTSReady;
         bool prevFaceReady = isFaceReady;
+
+        // 检查 Onnx 状态（如果存在）
+        isOnnxReady = onnxManager == null || onnxManager.IsInitialized();
 
         // 检查 LLM 状态
         isLLMReady = llmManager != null && llmManager.IsInitialized();
@@ -221,13 +235,16 @@ public class SDKLoadMonitor : MonoBehaviour
         // 输出状态变化
         if (enableDebugLog)
         {
+            if (isOnnxReady && !prevOnnxReady && onnxManager != null)
+                LoggerManager.Info("✅ SenseOnnx 已就绪", "SDKMonitor");
+
             if (isLLMReady && !prevLLMReady)
                 LoggerManager.Info("✅ RKLLM 已就绪", "SDKMonitor");
 
             if (isTTSReady && !prevTTSReady)
                 LoggerManager.Info("✅ RKTTS 已就绪", "SDKMonitor");
 
-            if (isFaceReady && !prevFaceReady)
+            if (isFaceReady && !prevFaceReady && faceManager != null)
                 LoggerManager.Info("✅ RKFace 已就绪", "SDKMonitor");
         }
     }
@@ -237,7 +254,7 @@ public class SDKLoadMonitor : MonoBehaviour
     /// </summary>
     bool CheckAllSDKsReady()
     {
-        return isLLMReady && isTTSReady && isFaceReady;
+        return isOnnxReady && isLLMReady && isTTSReady && isFaceReady;
     }
 
     /// <summary>
@@ -246,6 +263,9 @@ public class SDKLoadMonitor : MonoBehaviour
     string GetFailedSDKsList()
     {
         List<string> failedSDKs = new List<string>();
+
+        if (!isOnnxReady && onnxManager != null)
+            failedSDKs.Add("SenseOnnx");
 
         if (!isLLMReady && llmManager != null)
             failedSDKs.Add("RKLLM");
@@ -272,6 +292,9 @@ public class SDKLoadMonitor : MonoBehaviour
 
         float elapsedTime = Time.time - monitoringStartTime;
         string status = $"正在加载 SDK... ({elapsedTime:F1}s)\n";
+
+        if (onnxManager != null)
+            status += isOnnxReady ? "✅ Onnx 就绪\n" : "⏳ Onnx 加载中...\n";
 
         if (llmManager != null)
             status += isLLMReady ? "✅ LLM 就绪\n" : "⏳ LLM 加载中...\n";
@@ -301,6 +324,38 @@ public class SDKLoadMonitor : MonoBehaviour
     public bool CanPerformOperations()
     {
         return !operationsLocked && allSDKsReady;
+    }
+
+    /// <summary>
+    /// 安全地执行需要 Onnx 的操作
+    /// </summary>
+    public void SafeOnnxOperation(System.Action action, System.Action<string> onError = null)
+    {
+        if (!isOnnxReady)
+        {
+            string error = "SenseOnnx 未就绪，无法执行操作";
+            LoggerManager.Warning(error, "SDKMonitor");
+            onError?.Invoke(error);
+            return;
+        }
+
+        if (operationsLocked)
+        {
+            string error = "SDK 正在加载中，请稍候";
+            LoggerManager.Warning(error, "SDKMonitor");
+            onError?.Invoke(error);
+            return;
+        }
+
+        try
+        {
+            action?.Invoke();
+        }
+        catch (System.Exception e)
+        {
+            LoggerManager.Error($"Onnx 操作执行失败 - {e.Message}", "SDKMonitor");
+            onError?.Invoke(e.Message);
+        }
     }
 
     /// <summary>
@@ -404,9 +459,9 @@ public class SDKLoadMonitor : MonoBehaviour
     /// <summary>
     /// 获取各 SDK 的就绪状态
     /// </summary>
-    public (bool llm, bool tts, bool face) GetSDKReadyStatus()
+    public (bool onnx, bool llm, bool tts, bool face) GetSDKReadyStatus()
     {
-        return (isLLMReady, isTTSReady, isFaceReady);
+        return (isOnnxReady, isLLMReady, isTTSReady, isFaceReady);
     }
 
     /// <summary>
@@ -417,6 +472,7 @@ public class SDKLoadMonitor : MonoBehaviour
         if (enableDebugLog)
             LoggerManager.Info("重置所有 SDK 状态", "SDKMonitor");
 
+        isOnnxReady = false;
         isLLMReady = false;
         isTTSReady = false;
         isFaceReady = false;

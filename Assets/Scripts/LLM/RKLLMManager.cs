@@ -34,6 +34,11 @@ public class RKLLMManager : MonoBehaviour
     public event Action<string> OnLLMError;
     public event Action OnLLMComplete;  // 对话完成事件（callState == 2）
 
+    // SenseOnnxManager 兼容事件
+    public event Action<string> OnResponseReceived;  // 完整响应接收完成
+    public event Action<string, bool> OnStreamingUpdate;  // 流式更新（chunk, isComplete）
+    public event Action<string> OnError;  // 错误事件
+
     // 单例
     private static RKLLMManager instance;
     public static RKLLMManager Instance
@@ -193,10 +198,20 @@ public class RKLLMManager : MonoBehaviour
         catch (Exception e)
         {
             LoggerManager.Error($"初始化失败 - {e.Message}\n{e.StackTrace}", "LLM");
-            OnLLMError?.Invoke($"初始化失败: {e.Message}");
+            string errorMsg = $"初始化失败: {e.Message}";
+            OnLLMError?.Invoke(errorMsg);
+            OnError?.Invoke(errorMsg);  // SenseOnnxManager 兼容事件
             isInitialized = false;
         }
 #endif
+    }
+
+    /// <summary>
+    /// 发送消息（SenseOnnxManager 兼容方法）
+    /// </summary>
+    public void SendMessage(string message)
+    {
+        Chat(message, null);
     }
 
     /// <summary>
@@ -251,7 +266,9 @@ public class RKLLMManager : MonoBehaviour
         catch (Exception e)
         {
             LoggerManager.Error($"发送消息失败 - {e.Message}", "LLM");
-            OnLLMError?.Invoke($"发送消息失败: {e.Message}");
+            string errorMsg = $"发送消息失败: {e.Message}";
+            OnLLMError?.Invoke(errorMsg);
+            OnError?.Invoke(errorMsg);  // SenseOnnxManager 兼容事件
         }
 #else
         LoggerManager.Warning($"[模拟] 发送消息 - {message}", "LLM");
@@ -364,6 +381,13 @@ public class RKLLMManager : MonoBehaviour
 
             // 触发对话完成事件
             OnLLMComplete?.Invoke();
+
+            // 触发 SenseOnnxManager 兼容事件（流式更新完成）
+            if (!string.IsNullOrEmpty(result))
+            {
+                OnStreamingUpdate?.Invoke(result, true);
+                OnResponseReceived?.Invoke(result);
+            }
             return;
         }
 
@@ -373,6 +397,9 @@ public class RKLLMManager : MonoBehaviour
                 LoggerManager.Debug($"收到结果 - {result}", "LLM");
 
             OnLLMResult?.Invoke(result);
+
+            // 触发 SenseOnnxManager 兼容事件（流式更新中）
+            OnStreamingUpdate?.Invoke(result, false);
         }
     }
 

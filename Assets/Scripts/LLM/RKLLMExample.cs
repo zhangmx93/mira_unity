@@ -178,14 +178,43 @@ public class RKLLMExample : MonoBehaviour
         LoggerManager.Info("LLM 对话完成", "LLM");
 
         // 如果启用了自动 TTS，将完整的响应内容发送给 TTS
-        if (enableAutoTTS && ttsManager != null)
+        if (enableAutoTTS)
         {
             string fullResponse = responseBuilder.ToString();
 
             if (!string.IsNullOrEmpty(fullResponse))
             {
                 LoggerManager.Debug($"发送到 TTS - {fullResponse.Length} 个字符", "LLM");
-                ttsManager.Speak(fullResponse);
+
+                // 使用 SenseOnnxManager 进行 TTS
+                if (SenseOnnxManager.Instance != null)
+                {
+                    // 优先使用 Onnx TTS
+                    if (SenseOnnxManager.Instance.IsOnnxTTSReady())
+                    {
+                        LoggerManager.Debug("使用 Onnx TTS", "LLM");
+                        SenseOnnxManager.Instance.OnnxTtsGenerate(fullResponse);
+                    }
+                    // 如果 Onnx TTS 未就绪，使用 RK TTS
+                    else if (SenseOnnxManager.Instance.IsTTSReady())
+                    {
+                        LoggerManager.Debug("使用 RK TTS", "LLM");
+                        SenseOnnxManager.Instance.Speak(fullResponse);
+                    }
+                    else
+                    {
+                        LoggerManager.Warning("所有 TTS 均未就绪", "LLM");
+                    }
+                }
+                else
+                {
+                    LoggerManager.Warning("SenseOnnxManager 实例不存在，回退到直接调用 TTS", "LLM");
+                    // 回退：直接调用 ttsManager（如果存在）
+                    // if (ttsManager != null)
+                    // {
+                    //     ttsManager.Speak(fullResponse);
+                    // }
+                }
             }
             else
             {
