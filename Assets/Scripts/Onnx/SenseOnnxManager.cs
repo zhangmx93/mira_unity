@@ -729,8 +729,10 @@ public class SenseOnnxManager : MonoBehaviour
             try
             {
                 ttsProxy = new TtsCallbackProxy(ttsDataCallback);
-                ttsAbility.Call("setDataCallbackListener", ttsProxy);
-                LoggerManager.Debug("✅ TTS 回调监听器已设置", "SenseOnnx");
+                // 使用 Java Shim 包装代理，因为 DataCallbackListener 是抽象类
+                AndroidJavaObject ttsShim = new AndroidJavaObject("com.sensetime.senseonnx.unity.UnityDataCallbackShim$FloatShim", ttsProxy);
+                ttsAbility.Call("setDataCallbackListener", ttsShim);
+                LoggerManager.Debug("✅ TTS 回调监听器已通过 Shim 设置", "SenseOnnx");
             }
             catch (System.Exception e)
             {
@@ -745,8 +747,10 @@ public class SenseOnnxManager : MonoBehaviour
             try
             {
                 sttProxy = new SttCallbackProxy(sttDataCallback);
-                sttAbility.Call("setDataCallbackListener", sttProxy);
-                LoggerManager.Debug("✅ STT 回调监听器已设置", "SenseOnnx");
+                // 使用 Java Shim 包装代理
+                AndroidJavaObject sttShim = new AndroidJavaObject("com.sensetime.senseonnx.unity.UnityDataCallbackShim$StringShim", sttProxy);
+                sttAbility.Call("setDataCallbackListener", sttShim);
+                LoggerManager.Debug("✅ STT 回调监听器已通过 Shim 设置", "SenseOnnx");
             }
             catch (System.Exception e)
             {
@@ -761,8 +765,10 @@ public class SenseOnnxManager : MonoBehaviour
             try
             {
                 kwsProxy = new KwsCallbackProxy(kwsDataCallback);
-                kwsAbility.Call("setDataCallbackListener", kwsProxy);
-                LoggerManager.Debug("✅ KWS 回调监听器已设置", "SenseOnnx");
+                // 使用 Java Shim 包装代理
+                AndroidJavaObject kwsShim = new AndroidJavaObject("com.sensetime.senseonnx.unity.UnityDataCallbackShim$StringShim", kwsProxy);
+                kwsAbility.Call("setDataCallbackListener", kwsShim);
+                LoggerManager.Debug("✅ KWS 回调监听器已通过 Shim 设置", "SenseOnnx");
             }
             catch (System.Exception e)
             {
@@ -777,8 +783,10 @@ public class SenseOnnxManager : MonoBehaviour
             try
             {
                 recordProxy = new RecordCallbackProxy(recordDataCallback);
-                recordAbility.Call("setDataCallbackListener", recordProxy);
-                LoggerManager.Debug("✅ Record 回调监听器已设置", "SenseOnnx");
+                // 使用 Java Shim 包装代理
+                AndroidJavaObject recordShim = new AndroidJavaObject("com.sensetime.senseonnx.unity.UnityDataCallbackShim$FloatShim", recordProxy);
+                recordAbility.Call("setDataCallbackListener", recordShim);
+                LoggerManager.Debug("✅ Record 回调监听器已通过 Shim 设置", "SenseOnnx");
             }
             catch (System.Exception e)
             {
@@ -1204,6 +1212,107 @@ public class SenseOnnxManager : MonoBehaviour
         OnTtsAudioDataRecevied?.Invoke(data);
     }
 
+    /// <summary>
+    /// 诊断 DataCallbackListener 类型
+    /// </summary>
+    [ContextMenu("诊断 DataCallbackListener")]
+    public void DiagnoseDataCallbackListener()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        LoggerManager.Info("=== 开始诊断 DataCallbackListener ===", "SenseOnnx");
+        try
+        {
+            using (AndroidJavaClass classClass = new AndroidJavaClass("java.lang.Class"))
+            {
+                using (AndroidJavaObject cls = classClass.CallStatic<AndroidJavaObject>("forName", "com.sensetime.senseonnx.DataCallbackListener"))
+                {
+                    if (cls == null)
+                    {
+                        LoggerManager.Error("无法加载 com.sensetime.senseonnx.DataCallbackListener 类", "SenseOnnx");
+                        return;
+                    }
+
+                    // 检查是否是接口
+                    bool isInterface = cls.Call<bool>("isInterface");
+                    LoggerManager.Info($"DataCallbackListener isInterface: {isInterface}", "SenseOnnx");
+
+                    // 检查是否是抽象类
+                    int modifiers = cls.Call<int>("getModifiers");
+                    // Modifier.isAbstract = (modifiers & 1024) != 0
+                    bool isAbstract = (modifiers & 0x00000400) != 0;
+                    LoggerManager.Info($"DataCallbackListener isAbstract: {isAbstract} (modifiers: {modifiers})", "SenseOnnx");
+
+                    // 获取实现的接口
+                    AndroidJavaObject[] interfaces = cls.Call<AndroidJavaObject[]>("getInterfaces");
+                    if (interfaces != null)
+                    {
+                        LoggerManager.Info($"DataCallbackListener implements {interfaces.Length} interfaces:", "SenseOnnx");
+                        foreach (var face in interfaces)
+                        {
+                            LoggerManager.Info($"  - Interface: {face.Call<string>("getName")}", "SenseOnnx");
+                        }
+                    }
+
+                    // 检查父类
+                    using (AndroidJavaObject superCls = cls.Call<AndroidJavaObject>("getSuperclass"))
+                    {
+                        if (superCls != null)
+                        {
+                            LoggerManager.Info($"DataCallbackListener superclass: {superCls.Call<string>("getName")}", "SenseOnnx");
+                        }
+                    }
+
+                    // 检查内部接口或类
+                    AndroidJavaObject[] nestedClasses = cls.Call<AndroidJavaObject[]>("getDeclaredClasses");
+                    if (nestedClasses != null && nestedClasses.Length > 0)
+                    {
+                        LoggerManager.Info($"DataCallbackListener has {nestedClasses.Length} nested classes/interfaces:", "SenseOnnx");
+                        foreach (var nested in nestedClasses)
+                        {
+                            bool nestedIsInterface = nested.Call<bool>("isInterface");
+                            LoggerManager.Info($"  - Nested: {nested.Call<string>("getName")} (isInterface: {nestedIsInterface})", "SenseOnnx");
+                        }
+                    }
+
+                    // 列出所有方法及参数
+                    AndroidJavaObject[] methods = cls.Call<AndroidJavaObject[]>("getDeclaredMethods");
+                    if (methods != null)
+                    {
+                        LoggerManager.Info($"DataCallbackListener has {methods.Length} declared methods:", "SenseOnnx");
+                        foreach (var m in methods)
+                        {
+                            string mName = m.Call<string>("getName");
+                            int mMods = m.Call<int>("getModifiers");
+                            bool mIsAbstract = (mMods & 0x00000400) != 0;
+                            
+                            // 获取参数类型
+                            AndroidJavaObject[] paramTypes = m.Call<AndroidJavaObject[]>("getParameterTypes");
+                            string paramsStr = "";
+                            if (paramTypes != null)
+                            {
+                                foreach (var pt in paramTypes)
+                                {
+                                    if (paramsStr.Length > 0) paramsStr += ", ";
+                                    paramsStr += pt.Call<string>("getName");
+                                }
+                            }
+                            
+                            LoggerManager.Info($"  - Method: {mName}({paramsStr}) (abstract: {mIsAbstract})", "SenseOnnx");
+                        }
+                    }
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            LoggerManager.Error($"诊断失败: {e.Message}\n{e.StackTrace}", "SenseOnnx");
+        }
+        LoggerManager.Info("=== 诊断完毕 ===", "SenseOnnx");
+#else
+        LoggerManager.Warning("诊断功能仅在 Android 设备上可用", "SenseOnnx");
+#endif
+    }
+
     #endregion
 }
 
@@ -1294,11 +1403,13 @@ public class TtsCallbackProxy : AndroidJavaProxy
     private DataCallbackListener<float[]> callback;
 
     public TtsCallbackProxy(DataCallbackListener<float[]> callback)
-        : base("com.sensetime.senseonnx.DataCallbackListener")
+        : base("com.sensetime.senseonnx.unity.UnityDataCallbackShim$FloatCallback")
     {
         this.callback = callback;
     }
 
+    public void onBegin() { }
+    
     // Android 回调方法
     public void onChunk(float[] data)
     {
@@ -1308,6 +1419,9 @@ public class TtsCallbackProxy : AndroidJavaProxy
             callback.OnDataChunkCallback(data);
         });
     }
+
+    public void onEnd() { }
+    public void onError(string error) { }
 
     public void onFinish(float[] data)
     {
@@ -1332,17 +1446,6 @@ public class TtsCallbackProxy : AndroidJavaProxy
         }
         LoggerManager.Debug($"[TtsCallbackProxy] Invoke: {methodName} called{argsInfo}", "SenseOnnx");
 
-        // 如果是 onChunk 或 onFinish 以外的名称，尝试手动匹配
-        if (methodName == "onDataChunk" || methodName == "OnChunk" || methodName == "onData")
-        {
-             LoggerManager.Info($"[TtsCallbackProxy] 匹配到别名方法: {methodName} -> onChunk", "SenseOnnx");
-             if (args != null && args.Length > 0 && args[0] is float[] data)
-             {
-                 onChunk(data);
-                 return null;
-             }
-        }
-        
         return base.Invoke(methodName, args);
     }
 }
@@ -1401,10 +1504,12 @@ public class SttCallbackProxy : AndroidJavaProxy
     private DataCallbackListener<string> callback;
 
     public SttCallbackProxy(DataCallbackListener<string> callback)
-        : base("com.sensetime.senseonnx.DataCallbackListener")
+        : base("com.sensetime.senseonnx.unity.UnityDataCallbackShim$StringCallback")
     {
         this.callback = callback;
     }
+
+    public void onBegin() { }
 
     // Android 回调方法
     public void onChunk(string data)
@@ -1414,6 +1519,9 @@ public class SttCallbackProxy : AndroidJavaProxy
             callback.OnDataChunkCallback(data);
         });
     }
+
+    public void onEnd() { }
+    public void onError(string error) { }
 
     public void onFinish(string data)
     {
@@ -1473,10 +1581,12 @@ public class KwsCallbackProxy : AndroidJavaProxy
     private DataCallbackListener<string> callback;
 
     public KwsCallbackProxy(DataCallbackListener<string> callback)
-        : base("com.sensetime.senseonnx.DataCallbackListener")
+        : base("com.sensetime.senseonnx.unity.UnityDataCallbackShim$StringCallback")
     {
         this.callback = callback;
     }
+
+    public void onBegin() { }
 
     // Android 回调方法
     public void onChunk(string data)
@@ -1486,6 +1596,9 @@ public class KwsCallbackProxy : AndroidJavaProxy
             callback.OnDataChunkCallback(data);
         });
     }
+
+    public void onEnd() { }
+    public void onError(string error) { }
 
     public void onFinish(string data)
     {
@@ -1572,10 +1685,12 @@ public class RecordCallbackProxy : AndroidJavaProxy
     private DataCallbackListener<float[]> callback;
 
     public RecordCallbackProxy(DataCallbackListener<float[]> callback)
-        : base("com.sensetime.senseonnx.DataCallbackListener")
+        : base("com.sensetime.senseonnx.unity.UnityDataCallbackShim$FloatCallback")
     {
         this.callback = callback;
     }
+
+    public void onBegin() { }
 
     // Android 回调方法
     public void onChunk(float[] data)
@@ -1585,6 +1700,9 @@ public class RecordCallbackProxy : AndroidJavaProxy
             callback.OnDataChunkCallback(data);
         });
     }
+
+    public void onEnd() { }
+    public void onError(string error) { }
 
     public void onFinish(float[] data)
     {
