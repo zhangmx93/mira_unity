@@ -304,7 +304,10 @@ public class RKLLMExample : MonoBehaviour
         if (!isStreaming && audioBufferQueue.Count > requiredBuffer)
         {
             LoggerManager.Info($"[音频回调] 缓冲足够 ({audioBufferQueue.Count} > {requiredBuffer})，启动播放", "LLM");
-            StartStreamingPlayback();
+            // AudioClip.Create and audioSource.Play must be on Main Thread
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                StartStreamingPlayback();
+            });
         }
         else if (!isStreaming)
         {

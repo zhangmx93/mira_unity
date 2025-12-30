@@ -1212,107 +1212,6 @@ public class SenseOnnxManager : MonoBehaviour
         OnTtsAudioDataRecevied?.Invoke(data);
     }
 
-    /// <summary>
-    /// 诊断 DataCallbackListener 类型
-    /// </summary>
-    [ContextMenu("诊断 DataCallbackListener")]
-    public void DiagnoseDataCallbackListener()
-    {
-#if UNITY_ANDROID && !UNITY_EDITOR
-        LoggerManager.Info("=== 开始诊断 DataCallbackListener ===", "SenseOnnx");
-        try
-        {
-            using (AndroidJavaClass classClass = new AndroidJavaClass("java.lang.Class"))
-            {
-                using (AndroidJavaObject cls = classClass.CallStatic<AndroidJavaObject>("forName", "com.sensetime.senseonnx.DataCallbackListener"))
-                {
-                    if (cls == null)
-                    {
-                        LoggerManager.Error("无法加载 com.sensetime.senseonnx.DataCallbackListener 类", "SenseOnnx");
-                        return;
-                    }
-
-                    // 检查是否是接口
-                    bool isInterface = cls.Call<bool>("isInterface");
-                    LoggerManager.Info($"DataCallbackListener isInterface: {isInterface}", "SenseOnnx");
-
-                    // 检查是否是抽象类
-                    int modifiers = cls.Call<int>("getModifiers");
-                    // Modifier.isAbstract = (modifiers & 1024) != 0
-                    bool isAbstract = (modifiers & 0x00000400) != 0;
-                    LoggerManager.Info($"DataCallbackListener isAbstract: {isAbstract} (modifiers: {modifiers})", "SenseOnnx");
-
-                    // 获取实现的接口
-                    AndroidJavaObject[] interfaces = cls.Call<AndroidJavaObject[]>("getInterfaces");
-                    if (interfaces != null)
-                    {
-                        LoggerManager.Info($"DataCallbackListener implements {interfaces.Length} interfaces:", "SenseOnnx");
-                        foreach (var face in interfaces)
-                        {
-                            LoggerManager.Info($"  - Interface: {face.Call<string>("getName")}", "SenseOnnx");
-                        }
-                    }
-
-                    // 检查父类
-                    using (AndroidJavaObject superCls = cls.Call<AndroidJavaObject>("getSuperclass"))
-                    {
-                        if (superCls != null)
-                        {
-                            LoggerManager.Info($"DataCallbackListener superclass: {superCls.Call<string>("getName")}", "SenseOnnx");
-                        }
-                    }
-
-                    // 检查内部接口或类
-                    AndroidJavaObject[] nestedClasses = cls.Call<AndroidJavaObject[]>("getDeclaredClasses");
-                    if (nestedClasses != null && nestedClasses.Length > 0)
-                    {
-                        LoggerManager.Info($"DataCallbackListener has {nestedClasses.Length} nested classes/interfaces:", "SenseOnnx");
-                        foreach (var nested in nestedClasses)
-                        {
-                            bool nestedIsInterface = nested.Call<bool>("isInterface");
-                            LoggerManager.Info($"  - Nested: {nested.Call<string>("getName")} (isInterface: {nestedIsInterface})", "SenseOnnx");
-                        }
-                    }
-
-                    // 列出所有方法及参数
-                    AndroidJavaObject[] methods = cls.Call<AndroidJavaObject[]>("getDeclaredMethods");
-                    if (methods != null)
-                    {
-                        LoggerManager.Info($"DataCallbackListener has {methods.Length} declared methods:", "SenseOnnx");
-                        foreach (var m in methods)
-                        {
-                            string mName = m.Call<string>("getName");
-                            int mMods = m.Call<int>("getModifiers");
-                            bool mIsAbstract = (mMods & 0x00000400) != 0;
-                            
-                            // 获取参数类型
-                            AndroidJavaObject[] paramTypes = m.Call<AndroidJavaObject[]>("getParameterTypes");
-                            string paramsStr = "";
-                            if (paramTypes != null)
-                            {
-                                foreach (var pt in paramTypes)
-                                {
-                                    if (paramsStr.Length > 0) paramsStr += ", ";
-                                    paramsStr += pt.Call<string>("getName");
-                                }
-                            }
-                            
-                            LoggerManager.Info($"  - Method: {mName}({paramsStr}) (abstract: {mIsAbstract})", "SenseOnnx");
-                        }
-                    }
-                }
-            }
-        }
-        catch (System.Exception e)
-        {
-            LoggerManager.Error($"诊断失败: {e.Message}\n{e.StackTrace}", "SenseOnnx");
-        }
-        LoggerManager.Info("=== 诊断完毕 ===", "SenseOnnx");
-#else
-        LoggerManager.Warning("诊断功能仅在 Android 设备上可用", "SenseOnnx");
-#endif
-    }
-
     #endregion
 }
 
@@ -1413,11 +1312,9 @@ public class TtsCallbackProxy : AndroidJavaProxy
     // Android 回调方法
     public void onChunk(float[] data)
     {
-        LoggerManager.Debug($"[TtsCallbackProxy] onChunk hit! length: {data?.Length ?? 0}", "SenseOnnx");
-        UnityMainThreadDispatcher.Instance().Enqueue(() =>
-        {
-            callback.OnDataChunkCallback(data);
-        });
+        // 直接在 JNI 线程调用，不再强制进入主线程，以避免 ANR
+        // 外部处理代码（如 RKLLMExample）应确保线程安全
+        callback.OnDataChunkCallback(data);
     }
 
     public void onEnd() { }
@@ -1425,28 +1322,7 @@ public class TtsCallbackProxy : AndroidJavaProxy
 
     public void onFinish(float[] data)
     {
-        LoggerManager.Debug($"[TtsCallbackProxy] onFinish hit! length: {data?.Length ?? 0}", "SenseOnnx");
-        UnityMainThreadDispatcher.Instance().Enqueue(() =>
-        {
-            callback.OnDataFinishCallback(data);
-        });
-    }
-
-    public override AndroidJavaObject Invoke(string methodName, object[] args)
-    {
-        // 捕获所有可能的 JNI 调用
-        string argsInfo = "";
-        if (args != null)
-        {
-            argsInfo = $" with {args.Length} args";
-            for (int i = 0; i < args.Length; i++)
-            {
-                argsInfo += $", arg[{i}]: {(args[i] != null ? args[i].GetType().Name : "null")}";
-            }
-        }
-        LoggerManager.Debug($"[TtsCallbackProxy] Invoke: {methodName} called{argsInfo}", "SenseOnnx");
-
-        return base.Invoke(methodName, args);
+        callback.OnDataFinishCallback(data);
     }
 }
 #endif
@@ -1514,10 +1390,7 @@ public class SttCallbackProxy : AndroidJavaProxy
     // Android 回调方法
     public void onChunk(string data)
     {
-        UnityMainThreadDispatcher.Instance().Enqueue(() =>
-        {
-            callback.OnDataChunkCallback(data);
-        });
+        callback.OnDataChunkCallback(data);
     }
 
     public void onEnd() { }
@@ -1525,10 +1398,7 @@ public class SttCallbackProxy : AndroidJavaProxy
 
     public void onFinish(string data)
     {
-        UnityMainThreadDispatcher.Instance().Enqueue(() =>
-        {
-            callback.OnDataFinishCallback(data);
-        });
+        callback.OnDataFinishCallback(data);
     }
 }
 #endif
@@ -1591,10 +1461,7 @@ public class KwsCallbackProxy : AndroidJavaProxy
     // Android 回调方法
     public void onChunk(string data)
     {
-        UnityMainThreadDispatcher.Instance().Enqueue(() =>
-        {
-            callback.OnDataChunkCallback(data);
-        });
+        callback.OnDataChunkCallback(data);
     }
 
     public void onEnd() { }
@@ -1602,10 +1469,7 @@ public class KwsCallbackProxy : AndroidJavaProxy
 
     public void onFinish(string data)
     {
-        UnityMainThreadDispatcher.Instance().Enqueue(() =>
-        {
-            callback.OnDataFinishCallback(data);
-        });
+        callback.OnDataFinishCallback(data);
     }
 }
 #endif
@@ -1695,10 +1559,7 @@ public class RecordCallbackProxy : AndroidJavaProxy
     // Android 回调方法
     public void onChunk(float[] data)
     {
-        UnityMainThreadDispatcher.Instance().Enqueue(() =>
-        {
-            callback.OnDataChunkCallback(data);
-        });
+        callback.OnDataChunkCallback(data);
     }
 
     public void onEnd() { }
@@ -1706,10 +1567,7 @@ public class RecordCallbackProxy : AndroidJavaProxy
 
     public void onFinish(float[] data)
     {
-        UnityMainThreadDispatcher.Instance().Enqueue(() =>
-        {
-            callback.OnDataFinishCallback(data);
-        });
+        callback.OnDataFinishCallback(data);
     }
 }
 #endif
