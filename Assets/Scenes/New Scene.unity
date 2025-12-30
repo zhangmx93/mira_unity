@@ -2933,8 +2933,9 @@ MonoBehaviour:
   enableTTS: 1
   ttsManager: {fileID: 0}
   enableOnnxTTS: 1
-  enableSTT: 0
+  enableSTT: 1
   sttManager: {fileID: 0}
+  useInternalAudioPlayer: 1
 --- !u!1 &1801691675
 GameObject:
   m_ObjectHideFlags: 0
@@ -3729,6 +3730,7 @@ MonoBehaviour:
   displayScale: 0.1
   captureInterval: 0.1
   enableDebugLog: 1
+  autoCleanupInterval: 30
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

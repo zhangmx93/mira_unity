@@ -31,11 +31,11 @@ public class SenseOnnxManager : MonoBehaviour
 
     [Header("Onnx TTS 配置")]
     [Tooltip("是否启用 Onnx TTS（独立 SDK）")]
-    public bool enableOnnxTTS = false;
+    public bool enableOnnxTTS = true;
 
     [Header("STT 配置")]
     [Tooltip("是否自动启用 STT")]
-    public bool enableSTT = false;
+    public bool enableSTT = true;
 
     [Tooltip("STT 管理器引用（如果有）")]
     public MonoBehaviour sttManager;  // 预留 STT 管理器位置
@@ -297,19 +297,22 @@ public class SenseOnnxManager : MonoBehaviour
         yield return StartCoroutine(InitializeAbilities());
 
         // 5. 初始化 AudioTrack (用于 TTS 播放)
-        if (enableOnnxTTS && isTTSReady)
+        if (enableOnnxTTS && isOnnxTTSReady)
         {
             LoggerManager.Debug("[5/6] 初始化 AudioTrack...", "SenseOnnx");
             yield return StartCoroutine(InitializeAudioTrack());
         }
         else
         {
-            LoggerManager.Debug("[5/6] AudioTrack 初始化已跳过 (TTS 未启用)", "SenseOnnx");
+            LoggerManager.Debug($"[5/6] AudioTrack 初始化已跳过 (enableOnnxTTS: {enableOnnxTTS}, isOnnxTTSReady: {isOnnxTTSReady})", "SenseOnnx");
         }
 
         // 6. 设置回调监听器
         LoggerManager.Debug("[6/6] 设置回调监听器...", "SenseOnnx");
         SetupDataCallbackListeners();
+
+        // 7. 输出能力状态日志
+        LogCapabilitiesStatus();
 
         isInitialized = true;
         LoggerManager.Info("✅ SenseOnnx 管理器初始化完成", "SenseOnnx");
@@ -599,7 +602,8 @@ public class SenseOnnxManager : MonoBehaviour
             {
                 LoggerManager.Debug("获取 TtsAbility 实例...", "SenseOnnx");
                 ttsAbility = GetAbilityInstance($"{pkgPrefix}.tts.TtsAbility", "TtsAbility");
-                if (ttsAbility != null) isTTSReady = true;
+                LoggerManager.Debug($"TtsAbility 获取结果: {ttsAbility != null}", "SenseOnnx");
+                if (ttsAbility != null) isOnnxTTSReady = true;
             }
 
             // 获取 SttAbility 实例
@@ -607,7 +611,7 @@ public class SenseOnnxManager : MonoBehaviour
             {
                 LoggerManager.Debug("获取 SttAbility 实例...", "SenseOnnx");
                 sttAbility = GetAbilityInstance($"{pkgPrefix}.stt.SttAbility", "SttAbility");
-                if (sttAbility != null) isSTTReady = true;
+                if (sttAbility != null) isOnnxSTTReady = true; // 修正为 OnnxSTT
             }
 
             // 获取 KwsAbility 实例
@@ -714,11 +718,12 @@ public class SenseOnnxManager : MonoBehaviour
     /// <summary>
     /// 设置数据回调监听器
     /// </summary>
-    private void SetupDataCallbackListeners()
+    public void SetupDataCallbackListeners()
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
+        LoggerManager.Debug($"isOnnxTTSReady: {isOnnxTTSReady}, ttsAbility: {ttsAbility}", "SenseOnnx");
         // 设置 TTS 回调监听器
-        if (isTTSReady && ttsAbility != null)
+        if (isOnnxTTSReady && ttsAbility != null)
         {
             ttsDataCallback = new TtsDataCallback(this);
             try
@@ -734,7 +739,7 @@ public class SenseOnnxManager : MonoBehaviour
         }
 
         // 设置 STT 回调监听器
-        if (isSTTReady && sttAbility != null)
+        if (isOnnxSTTReady && sttAbility != null)
         {
             sttDataCallback = new SttDataCallback(this);
             try
@@ -793,7 +798,11 @@ public class SenseOnnxManager : MonoBehaviour
     public void TtsGenerate(string text)
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
-        if (!isTTSReady || ttsAbility == null)
+        LoggerManager.Debug($"ttsAbility: {ttsAbility}", "SenseOnnx");
+        LoggerManager.Debug($"isOnnxTTSReady: {isOnnxTTSReady}", "SenseOnnx");
+        LoggerManager.Debug($"audioTrack: {audioTrack}", "SenseOnnx");
+        
+        if (!isOnnxTTSReady || ttsAbility == null)
         {
             LoggerManager.Warning("TTS 未就绪", "SenseOnnx");
             return;
@@ -806,13 +815,21 @@ public class SenseOnnxManager : MonoBehaviour
             // 暂停、清空并重新播放 AudioTrack
             if (audioTrack != null)
             {
+                LoggerManager.Debug("重置内部 AudioTrack", "SenseOnnx");
                 audioTrack.Call("pause");
                 audioTrack.Call("flush");
                 audioTrack.Call("play");
             }
             
-            // 输入文本到 TTS
-            ttsAbility.Call("inputData", text);
+            if (ttsAbility != null)
+            {
+                LoggerManager.Debug("调用 ttsAbility.inputData(text)", "SenseOnnx");
+                ttsAbility.Call("inputData", text);
+            }
+            else
+            {
+                LoggerManager.Error("ttsAbility 在调用 inputData 前变为 null", "SenseOnnx");
+            }
         }
         catch (System.Exception e)
         {
@@ -1148,6 +1165,24 @@ public class SenseOnnxManager : MonoBehaviour
 
     #endregion
 
+    /// <summary>
+    /// 输出能力状态日志
+    /// </summary>
+    private void LogCapabilitiesStatus()
+    {
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        sb.AppendLine("=== SenseOnnx Capabilities Status ===");
+        sb.AppendLine($"SenseOnnx Init: {isInitialized}");
+        sb.AppendLine($"TTS (Unity): {(IsTTSReady() ? "Ready" : "Not Ready")}");
+        sb.AppendLine($"Onnx TTS: {(isOnnxTTSReady ? "Ready" : "Not Ready")}");
+        sb.AppendLine($"Onnx STT: {(isOnnxSTTReady ? "Ready" : "Not Ready")}");
+        sb.AppendLine($"Record: {(isRecordReady ? "Ready" : "Not Ready")}");
+        sb.AppendLine($"KWS: {(isKwsReady ? "Ready" : "Not Ready")}");
+        sb.AppendLine("=====================================");
+
+        LoggerManager.Info(sb.ToString(), "SenseOnnx");
+    }
+
     #region 公共 API - STT 接口（预留）
 
     // TODO: 添加 STT 相关接口
@@ -1157,6 +1192,15 @@ public class SenseOnnxManager : MonoBehaviour
     /// </summary>
     public void DispatchTtsData(float[] data)
     {
+        int subscriberCount = OnTtsAudioDataRecevied?.GetInvocationList()?.Length ?? 0;
+        if (data != null && data.Length > 0)
+        {
+            LoggerManager.Debug($"[SenseOnnxManager] DispatchTtsData: {data.Length} 个采样, 订阅者: {subscriberCount}", "SenseOnnx");
+        }
+        else
+        {
+             LoggerManager.Warning($"[SenseOnnxManager] DispatchTtsData 收到空数据", "SenseOnnx");
+        }
         OnTtsAudioDataRecevied?.Invoke(data);
     }
 
@@ -1179,7 +1223,7 @@ public class TtsDataCallback : DataCallbackListener<float[]>
 
     public void OnDataChunkCallback(float[] data)
     {
-        LoggerManager.Debug($"TTS 数据块回调: {data?.Length ?? 0} 个采样", "SenseOnnx");
+        LoggerManager.Debug($"[TtsDataCallback] OnDataChunkCallback: {data?.Length ?? 0} 个采样", "SenseOnnx");
         
         if (manager != null)
         {
@@ -1258,6 +1302,7 @@ public class TtsCallbackProxy : AndroidJavaProxy
     // Android 回调方法
     public void onChunk(float[] data)
     {
+        LoggerManager.Debug($"[TtsCallbackProxy] onChunk hit! length: {data?.Length ?? 0}", "SenseOnnx");
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {
             callback.OnDataChunkCallback(data);
@@ -1266,10 +1311,39 @@ public class TtsCallbackProxy : AndroidJavaProxy
 
     public void onFinish(float[] data)
     {
+        LoggerManager.Debug($"[TtsCallbackProxy] onFinish hit! length: {data?.Length ?? 0}", "SenseOnnx");
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {
             callback.OnDataFinishCallback(data);
         });
+    }
+
+    public override AndroidJavaObject Invoke(string methodName, object[] args)
+    {
+        // 捕获所有可能的 JNI 调用
+        string argsInfo = "";
+        if (args != null)
+        {
+            argsInfo = $" with {args.Length} args";
+            for (int i = 0; i < args.Length; i++)
+            {
+                argsInfo += $", arg[{i}]: {(args[i] != null ? args[i].GetType().Name : "null")}";
+            }
+        }
+        LoggerManager.Debug($"[TtsCallbackProxy] Invoke: {methodName} called{argsInfo}", "SenseOnnx");
+
+        // 如果是 onChunk 或 onFinish 以外的名称，尝试手动匹配
+        if (methodName == "onDataChunk" || methodName == "OnChunk" || methodName == "onData")
+        {
+             LoggerManager.Info($"[TtsCallbackProxy] 匹配到别名方法: {methodName} -> onChunk", "SenseOnnx");
+             if (args != null && args.Length > 0 && args[0] is float[] data)
+             {
+                 onChunk(data);
+                 return null;
+             }
+        }
+        
+        return base.Invoke(methodName, args);
     }
 }
 #endif

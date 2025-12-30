@@ -84,6 +84,11 @@ public class RKLLMExample : MonoBehaviour
         if (SenseOnnxManager.Instance != null)
         {
             SenseOnnxManager.Instance.OnTtsAudioDataRecevied += OnTtsDataCallback;
+            LoggerManager.Info("[RKLLMExample] 成功订阅 SenseOnnxManager.OnTtsAudioDataRecevied 事件", "LLM");
+        }
+        else
+        {
+            LoggerManager.Warning("[RKLLMExample] SenseOnnxManager.Instance 为空，无法订阅 TTS 回调", "LLM");
         }
 
 
@@ -227,6 +232,11 @@ public class RKLLMExample : MonoBehaviour
                 // 使用 SenseOnnxManager 进行 TTS
                 if (SenseOnnxManager.Instance != null)
                 {
+                    // 再次检查订阅，防止意外丢失
+                    var invocationList = typeof(SenseOnnxManager).GetField("OnTtsAudioDataRecevied", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public)?.GetValue(SenseOnnxManager.Instance) as System.Delegate;
+                    int subCount = invocationList?.GetInvocationList()?.Length ?? 0;
+                    LoggerManager.Debug($"[RKLLMExample] 调用 TtsGenerate 前检查，TTS 订阅者数量: {subCount}", "LLM");
+
                     if (SenseOnnxManager.Instance.IsTtsAbilityReady())
                     {
                         LoggerManager.Debug("使用 SenseOnnx TTS Ability", "LLM");
@@ -255,7 +265,13 @@ public class RKLLMExample : MonoBehaviour
     /// </summary>
     private void OnTtsDataCallback(float[] data)
     {
-        if (data == null || data.Length == 0) return;
+        LoggerManager.Debug($"[音频回调] 收到数据: {data?.Length ?? 0} 个采样", "LLM");
+        
+        if (data == null || data.Length == 0)
+        {
+            LoggerManager.Warning("[音频回调] 数据为空，跳过", "LLM");
+            return;
+        }
 
         int sourceRate = 16000;
         if (SenseOnnxManager.Instance != null && SenseOnnxManager.Instance.GetTtsSampleRate() > 0)
@@ -263,24 +279,36 @@ public class RKLLMExample : MonoBehaviour
             sourceRate = SenseOnnxManager.Instance.GetTtsSampleRate();
         }
 
+        LoggerManager.Debug($"[音频回调] 源采样率: {sourceRate}, 目标采样率: {ttsSampleRate}", "LLM");
+
         float[] dataToEnqueue = data;
 
         // 如果源采样率不是 44100，则进行重采样
         if (sourceRate != ttsSampleRate)
         {
             dataToEnqueue = Resample(data, sourceRate, ttsSampleRate);
+            LoggerManager.Debug($"[音频回调] 重采样后: {dataToEnqueue.Length} 个采样", "LLM");
         }
 
         // 将数据放入队列
+        int beforeCount = audioBufferQueue.Count;
         foreach (float sample in dataToEnqueue)
         {
             audioBufferQueue.Enqueue(sample);
         }
+        
+        LoggerManager.Debug($"[音频回调] 队列大小: {beforeCount} → {audioBufferQueue.Count}", "LLM");
 
         // 如果还没开始播放，且缓冲了一定数据，则开始播放
-        if (!isStreaming && audioBufferQueue.Count > ttsSampleRate * 0.1f) // 缓冲 0.1s
+        int requiredBuffer = (int)(ttsSampleRate * 0.1f);
+        if (!isStreaming && audioBufferQueue.Count > requiredBuffer)
         {
+            LoggerManager.Info($"[音频回调] 缓冲足够 ({audioBufferQueue.Count} > {requiredBuffer})，启动播放", "LLM");
             StartStreamingPlayback();
+        }
+        else if (!isStreaming)
+        {
+            LoggerManager.Debug($"[音频回调] 缓冲不足: {audioBufferQueue.Count}/{requiredBuffer}", "LLM");
         }
     }
 
@@ -312,35 +340,59 @@ public class RKLLMExample : MonoBehaviour
 
     private void StartStreamingPlayback()
     {
-        if (isStreaming) return;
+        if (isStreaming)
+        {
+            LoggerManager.Warning("[播放器] 已在播放中，跳过", "LLM");
+            return;
+        }
 
         // 强制使用 44100Hz
         ttsSampleRate = 44100;
         
-        LoggerManager.Info($"开始流式播放 - 采样率: {ttsSampleRate} (强制)", "LLM");
+        LoggerManager.Info($"[播放器] 开始流式播放 - 采样率: {ttsSampleRate}", "LLM");
+        LoggerManager.Info($"[播放器] AudioSource 状态: {(audioSource != null ? "存在" : "不存在")}", "LLM");
+
+        if (audioSource == null)
+        {
+            LoggerManager.Error("[播放器] AudioSource 为空！", "LLM");
+            return;
+        }
 
         // 创建流式 AudioClip
         // 长度设置为较短（例如 10秒循环），通过回调填充
         AudioClip clip = AudioClip.Create("TTS_Stream", ttsSampleRate * 10, 1, ttsSampleRate, true, OnAudioRead);
         audioSource.clip = clip;
+        audioSource.volume = 1.0f; // 确保音量最大
         audioSource.Play();
         isStreaming = true;
+        
+        LoggerManager.Info($"[播放器] AudioSource 启动成功 - isPlaying: {audioSource.isPlaying}, clip: {audioSource.clip.name}, sampleRate: {audioSource.clip.frequency}", "LLM");
     }
 
     // Unity AudioSource 的 PCM 读取回调 (在此线程填充数据)
     private void OnAudioRead(float[] data)
     {
+        streamingCallbackCount++;
+        int samplesRead = 0;
+        
         for (int i = 0; i < data.Length; i++)
         {
             if (audioBufferQueue.TryDequeue(out float sample))
             {
                 data[i] = sample;
+                samplesRead++;
             }
             else
             {
                 // 队列为空，填充静音
                 data[i] = 0f;
             }
+        }
+        
+        // 每100次回调输出一次日志
+        if (streamingCallbackCount % 100 == 0)
+        {
+            LoggerManager.Debug($"[OnAudioRead] 回调 #{streamingCallbackCount}, 读取: {samplesRead}/{data.Length}, 队列剩余: {audioBufferQueue.Count}", "LLM");
         }
     }
     
