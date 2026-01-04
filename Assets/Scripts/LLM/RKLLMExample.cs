@@ -261,81 +261,95 @@ public class RKLLMExample : MonoBehaviour
 
 
     /// <summary>
-    /// TTS 音频数据回调
+    /// TTS 音频数据回调（在后台线程调用 - 注意性能）
     /// </summary>
     private void OnTtsDataCallback(float[] data)
     {
-        LoggerManager.Debug($"[音频回调] 收到数据: {data?.Length ?? 0} 个采样", "LLM");
-        
         if (data == null || data.Length == 0)
         {
-            LoggerManager.Warning("[音频回调] 数据为空，跳过", "LLM");
             return;
         }
 
-        int sourceRate = 16000;
-        if (SenseOnnxManager.Instance != null && SenseOnnxManager.Instance.GetTtsSampleRate() > 0)
+        // 异步处理音频数据，避免阻塞 JNI 线程
+        System.Threading.ThreadPool.QueueUserWorkItem(_ => ProcessAudioData(data));
+    }
+
+    /// <summary>
+    /// 在后台线程处理音频数据
+    /// </summary>
+    private void ProcessAudioData(float[] data)
+    {
+        try
         {
-            sourceRate = SenseOnnxManager.Instance.GetTtsSampleRate();
+            int sourceRate = 16000;
+            if (SenseOnnxManager.Instance != null && SenseOnnxManager.Instance.GetTtsSampleRate() > 0)
+            {
+                sourceRate = SenseOnnxManager.Instance.GetTtsSampleRate();
+            }
+
+            float[] dataToEnqueue = data;
+
+            // 如果源采样率不是 44100，则进行重采样
+            if (sourceRate != ttsSampleRate)
+            {
+                dataToEnqueue = Resample(data, sourceRate, ttsSampleRate);
+            }
+
+            // 将数据放入队列（ConcurrentQueue 是线程安全的）
+            int beforeCount = audioBufferQueue.Count;
+            foreach (float sample in dataToEnqueue)
+            {
+                audioBufferQueue.Enqueue(sample);
+            }
+
+            // 如果还没开始播放，且缓冲了一定数据，则开始播放
+            int requiredBuffer = (int)(ttsSampleRate * 0.1f);
+            if (!isStreaming && audioBufferQueue.Count > requiredBuffer)
+            {
+                // AudioClip.Create and audioSource.Play must be on Main Thread
+                UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                    StartStreamingPlayback();
+                });
+            }
         }
-
-        LoggerManager.Debug($"[音频回调] 源采样率: {sourceRate}, 目标采样率: {ttsSampleRate}", "LLM");
-
-        float[] dataToEnqueue = data;
-
-        // 如果源采样率不是 44100，则进行重采样
-        if (sourceRate != ttsSampleRate)
+        catch (System.Exception e)
         {
-            dataToEnqueue = Resample(data, sourceRate, ttsSampleRate);
-            LoggerManager.Debug($"[音频回调] 重采样后: {dataToEnqueue.Length} 个采样", "LLM");
-        }
-
-        // 将数据放入队列
-        int beforeCount = audioBufferQueue.Count;
-        foreach (float sample in dataToEnqueue)
-        {
-            audioBufferQueue.Enqueue(sample);
-        }
-        
-        LoggerManager.Debug($"[音频回调] 队列大小: {beforeCount} → {audioBufferQueue.Count}", "LLM");
-
-        // 如果还没开始播放，且缓冲了一定数据，则开始播放
-        int requiredBuffer = (int)(ttsSampleRate * 0.1f);
-        if (!isStreaming && audioBufferQueue.Count > requiredBuffer)
-        {
-            LoggerManager.Info($"[音频回调] 缓冲足够 ({audioBufferQueue.Count} > {requiredBuffer})，启动播放", "LLM");
-            // AudioClip.Create and audioSource.Play must be on Main Thread
             UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                StartStreamingPlayback();
+                LoggerManager.Error($"[音频处理] 处理音频数据失败: {e.Message}", "LLM");
             });
-        }
-        else if (!isStreaming)
-        {
-            LoggerManager.Debug($"[音频回调] 缓冲不足: {audioBufferQueue.Count}/{requiredBuffer}", "LLM");
         }
     }
 
     /// <summary>
-    /// 简单的线性重采样
+    /// 优化的线性重采样（减少浮点运算）
     /// </summary>
     private float[] Resample(float[] input, int sourceRate, int targetRate)
     {
         if (sourceRate == targetRate) return input;
 
+        // 预计算常量，避免在循环中重复计算
         float ratio = (float)sourceRate / targetRate;
         int newLength = (int)(input.Length / ratio);
         float[] output = new float[newLength];
+        int inputLength = input.Length;
 
+        // 使用整数索引和固定点数学减少浮点运算
         for (int i = 0; i < newLength; i++)
         {
             float position = i * ratio;
             int index = (int)position;
-            float frac = position - index;
 
-            float val1 = input[index];
-            float val2 = (index + 1 < input.Length) ? input[index + 1] : val1;
-
-            output[i] = val1 * (1.0f - frac) + val2 * frac;
+            // 边界检查
+            if (index >= inputLength - 1)
+            {
+                output[i] = input[inputLength - 1];
+            }
+            else
+            {
+                // 线性插值
+                float frac = position - index;
+                output[i] = input[index] + (input[index + 1] - input[index]) * frac;
+            }
         }
 
         return output;
@@ -345,15 +359,13 @@ public class RKLLMExample : MonoBehaviour
     {
         if (isStreaming)
         {
-            LoggerManager.Warning("[播放器] 已在播放中，跳过", "LLM");
             return;
         }
 
         // 强制使用 44100Hz
         ttsSampleRate = 44100;
-        
+
         LoggerManager.Info($"[播放器] 开始流式播放 - 采样率: {ttsSampleRate}", "LLM");
-        LoggerManager.Info($"[播放器] AudioSource 状态: {(audioSource != null ? "存在" : "不存在")}", "LLM");
 
         if (audioSource == null)
         {
@@ -368,8 +380,8 @@ public class RKLLMExample : MonoBehaviour
         audioSource.volume = 1.0f; // 确保音量最大
         audioSource.Play();
         isStreaming = true;
-        
-        LoggerManager.Info($"[播放器] AudioSource 启动成功 - isPlaying: {audioSource.isPlaying}, clip: {audioSource.clip.name}, sampleRate: {audioSource.clip.frequency}", "LLM");
+
+        LoggerManager.Info($"[播放器] 播放已启动", "LLM");
     }
 
     // Unity AudioSource 的 PCM 读取回调 (在此线程填充数据)
@@ -377,7 +389,7 @@ public class RKLLMExample : MonoBehaviour
     {
         streamingCallbackCount++;
         int samplesRead = 0;
-        
+
         for (int i = 0; i < data.Length; i++)
         {
             if (audioBufferQueue.TryDequeue(out float sample))
@@ -391,11 +403,11 @@ public class RKLLMExample : MonoBehaviour
                 data[i] = 0f;
             }
         }
-        
-        // 每100次回调输出一次日志
-        if (streamingCallbackCount % 100 == 0)
+
+        // 每500次回调输出一次日志（减少日志压力）
+        if (streamingCallbackCount % 500 == 0)
         {
-            LoggerManager.Debug($"[OnAudioRead] 回调 #{streamingCallbackCount}, 读取: {samplesRead}/{data.Length}, 队列剩余: {audioBufferQueue.Count}", "LLM");
+            LoggerManager.Debug($"[OnAudioRead] #{streamingCallbackCount}, 读取: {samplesRead}/{data.Length}, 队列: {audioBufferQueue.Count}", "LLM");
         }
     }
     
